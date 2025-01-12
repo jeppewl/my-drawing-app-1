@@ -3,6 +3,7 @@ import Toolbar from "./components/Toolbar";
 import Canvas from "./components/Canvas";
 import Sidebar from "./components/Sidebar";
 import "./styles.css";
+import BeadCanvas from "./components/BeadCanvas.jsx";
 
 const App = () => {
   const [shapes, setShapes] = useState([]); // Stores all shapes
@@ -47,6 +48,7 @@ const App = () => {
           />
         )}
       </div>
+      <BeadCanvas />
     </div>
   );
 };
