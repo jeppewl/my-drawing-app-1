@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const Canvas = ({ shapes, selectedShape, setSelectedShape, updateShape }) => {
+const CanvasTSX = ({ shapes, selectedShape, setSelectedShape, updateShape }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 }); // Offset from the mouse to the shape's position
 
@@ -90,4 +90,4 @@ const Canvas = ({ shapes, selectedShape, setSelectedShape, updateShape }) => {
   );
 };
 
-export default Canvas;
+export default CanvasTSX;
