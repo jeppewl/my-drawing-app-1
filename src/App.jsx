@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import Toolbar from "./components/Toolbar";
-import Canvas from "./components/Canvas";
 import Sidebar from "./components/Sidebar";
 import "./styles.css";
 import BeadCanvas from "./components/BeadCanvas.jsx";
-import CanvasTSX from "./components/CanvasTSX.tsx";
+import Canvas from "./components/Canvas.tsx";
 
 const App = () => {
   const [shapes, setShapes] = useState([]); // Stores all shapes
@@ -36,13 +35,7 @@ const App = () => {
     <div className="app">
       <Toolbar createShape={createShape} />
       <div className="workspace">
-        {/* <Canvas
-          shapes={shapes}
-          selectedShape={selectedShape}
-          setSelectedShape={setSelectedShape}
-          updateShape={updateShape}
-        /> */}
-        <CanvasTSX
+        <Canvas
           shapes={shapes}
           selectedShape={selectedShape}
           setSelectedShape={setSelectedShape}
