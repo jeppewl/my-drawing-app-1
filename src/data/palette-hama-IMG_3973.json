@@ -1,0 +1,310 @@
+{"brand": "Hama",
+ "sample": "IMG_3973",
+ "description": "Hama as of 2025-03-05, sample 8463 and 3973. File created using FormatPaletteToJSON.R",
+ "colors": [
+  {
+    "code": 1,
+    "name": "White",
+    "hexValue": "#f5f3e7"
+  },
+  {
+    "code": 2,
+    "name": "Cream",
+    "hexValue": "#f5e4a3"
+  },
+  {
+    "code": 3,
+    "name": "Yellow",
+    "hexValue": "#f9c002"
+  },
+  {
+    "code": 4,
+    "name": "Orange",
+    "hexValue": "#df4704"
+  },
+  {
+    "code": 5,
+    "name": "Red",
+    "hexValue": "#b9131c"
+  },
+  {
+    "code": 6,
+    "name": "Pink",
+    "hexValue": "#ef788c"
+  },
+  {
+    "code": 7,
+    "name": "Purple",
+    "hexValue": "#6c3178"
+  },
+  {
+    "code": 8,
+    "name": "Blue",
+    "hexValue": "#033482"
+  },
+  {
+    "code": 9,
+    "name": "Light blue",
+    "hexValue": "#0354a4"
+  },
+  {
+    "code": 10,
+    "name": "Green",
+    "hexValue": "#067044"
+  },
+  {
+    "code": 11,
+    "name": "Light green",
+    "hexValue": "#0fc393"
+  },
+  {
+    "code": 12,
+    "name": "Brown",
+    "hexValue": "#4b392e"
+  },
+  {
+    "code": 17,
+    "name": "Grey",
+    "hexValue": "#7b7d7b"
+  },
+  {
+    "code": 18,
+    "name": "Black",
+    "hexValue": "#2c2523"
+  },
+  {
+    "code": 20,
+    "name": "Reddish brown",
+    "hexValue": "#8d351f"
+  },
+  {
+    "code": 21,
+    "name": "Light brown",
+    "hexValue": "#b56629"
+  },
+  {
+    "code": 22,
+    "name": "Dark red",
+    "hexValue": "#980c1a"
+  },
+  {
+    "code": 26,
+    "name": "Flesh",
+    "hexValue": "#e19079"
+  },
+  {
+    "code": 27,
+    "name": "Beige",
+    "hexValue": "#d6a170"
+  },
+  {
+    "code": 28,
+    "name": "Dark green",
+    "hexValue": "#343629"
+  },
+  {
+    "code": 29,
+    "name": "Claret",
+    "hexValue": "#be1a41"
+  },
+  {
+    "code": 30,
+    "name": "Burgundy",
+    "hexValue": "#5b2d34"
+  },
+  {
+    "code": 31,
+    "name": "Turquoise",
+    "hexValue": "#468a99"
+  },
+  {
+    "code": 43,
+    "name": "Pastel yellow",
+    "hexValue": "#f0df24"
+  },
+  {
+    "code": 44,
+    "name": "Pastel red",
+    "hexValue": "#f55749"
+  },
+  {
+    "code": 45,
+    "name": "Pastel purple",
+    "hexValue": "#8b5ea8"
+  },
+  {
+    "code": 46,
+    "name": "Pastel blue",
+    "hexValue": "#28a5d4"
+  },
+  {
+    "code": 47,
+    "name": "Pastel green",
+    "hexValue": "#5ecd71"
+  },
+  {
+    "code": 48,
+    "name": "Pastel pink",
+    "hexValue": "#d858b1"
+  },
+  {
+    "code": 49,
+    "name": "Azure",
+    "hexValue": "#18a1bc"
+  },
+  {
+    "code": 60,
+    "name": "Teddybear brown",
+    "hexValue": "#e18d25"
+  },
+  {
+    "code": 70,
+    "name": "Light grey",
+    "hexValue": "#9c9fa3"
+  },
+  {
+    "code": 71,
+    "name": "Dark grey",
+    "hexValue": "#565656"
+  },
+  {
+    "code": 75,
+    "name": "Tan",
+    "hexValue": "#a27652"
+  },
+  {
+    "code": 76,
+    "name": "Nougat",
+    "hexValue": "#7c4f2f"
+  },
+  {
+    "code": 77,
+    "name": "Cloudy white",
+    "hexValue": "#cdc4ad"
+  },
+  {
+    "code": 78,
+    "name": "Light flesh",
+    "hexValue": "#f4a981"
+  },
+  {
+    "code": 79,
+    "name": "Apricot",
+    "hexValue": "#f46e2f"
+  },
+  {
+    "code": 82,
+    "name": "Plum",
+    "hexValue": "#83264b"
+  },
+  {
+    "code": 83,
+    "name": "Petrol blue",
+    "hexValue": "#056b81"
+  },
+  {
+    "code": 84,
+    "name": "Olive green",
+    "hexValue": "#666b3a"
+  },
+  {
+    "code": 95,
+    "name": "Pastel rose",
+    "hexValue": "#e79db1"
+  },
+  {
+    "code": 96,
+    "name": "Pastel lilac",
+    "hexValue": "#c09ec8"
+  },
+  {
+    "code": 97,
+    "name": "Pastel ice blue",
+    "hexValue": "#8ec2e5"
+  },
+  {
+    "code": 98,
+    "name": "Pastel mint",
+    "hexValue": "#81d7aa"
+  },
+  {
+    "code": 101,
+    "name": "Eucalyptus",
+    "hexValue": "#8fa68b"
+  },
+  {
+    "code": 102,
+    "name": "Forest green",
+    "hexValue": "#435a3b"
+  },
+  {
+    "code": 103,
+    "name": "Light yellow",
+    "hexValue": "#f1c936"
+  },
+  {
+    "code": 104,
+    "name": "Lime",
+    "hexValue": "#aaa703"
+  },
+  {
+    "code": 105,
+    "name": "Light apricot",
+    "hexValue": "#f3903f"
+  },
+  {
+    "code": 106,
+    "name": "Light lavender",
+    "hexValue": "#afa2bb"
+  },
+  {
+    "code": 107,
+    "name": "Lavender",
+    "hexValue": "#5d6a9b"
+  },
+  {
+    "code": 108,
+    "name": "Aubergine",
+    "hexValue": "#4c3749"
+  },
+  {
+    "code": 109,
+    "name": "Cloudy grey",
+    "hexValue": "#aaa39a"
+  },
+  {
+    "code": 110,
+    "name": "Matcha",
+    "hexValue": "#989d5f"
+  },
+  {
+    "code": 111,
+    "name": "Dark blush",
+    "hexValue": "#9c6261"
+  },
+  {
+    "code": 112,
+    "name": "Blush",
+    "hexValue": "#e9ae89"
+  },
+  {
+    "code": 113,
+    "name": "Aqua",
+    "hexValue": "#65b799"
+  },
+  {
+    "code": 114,
+    "name": "Cherry red",
+    "hexValue": "#be1922"
+  },
+  {
+    "code": 115,
+    "name": "Bright green",
+    "hexValue": "#76cb6f"
+  },
+  {
+    "code": 116,
+    "name": "Midnight blue",
+    "hexValue": "#0c1d33"
+  }
+]}

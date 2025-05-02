@@ -1,5 +1,8 @@
 import React from "react";
 import type { Shape } from "../types/shape";
+// import colorData from "../data/palette-ideal-rgb-cmyk.json";
+import colorData from "../data/palette-hama-IMG_3973.json";
+
 // type BaseShape = {
 //   id: string;
 //   x: number;
@@ -25,7 +28,15 @@ interface SidebarProps {
   updateShape: (id: string, newProps: Partial<Shape>) => void;
 }
 
-const presetColors = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93"];
+type Color = {
+  code: number;
+  name: string;
+  hexValue: string;
+};
+
+const presetColors: Color[] = colorData.colors;
+
+// const presetColors = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93"];
 
 const Sidebar: React.FC<SidebarProps> = ({ shape, updateShape }) => {
   if (!shape) {
@@ -41,34 +52,39 @@ const Sidebar: React.FC<SidebarProps> = ({ shape, updateShape }) => {
     <div className="sidebar">
       <div>
         <p>Color:</p>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(24px, 1fr))",
+            gap: "0.5rem",
+            maxWidth: "200px", // optional, controls wrapping
+          }}
+        >
           {presetColors.map((color) => (
             <button
-              key={color}
+              key={color.hexValue}
+              title={color.name} // Show color name on hover
               style={{
-                backgroundColor: color,
-                border: shape.color === color ? "2px solid black" : "2px solid #ccc",
+                backgroundColor: color.hexValue,
+                border: shape.color === color.hexValue ? "2px solid black" : "2px solid #ccc",
                 width: "24px",
                 height: "24px",
-                borderRadius: "25%",
-                transition: "border-color 0.2s", // Smooth transition for border color
+                borderRadius: "0", // square
+                transition: "border-color 0.2s",
                 cursor: "pointer",
               }}
-              onClick={() => updateShape(shape.id, { color })}
-              onMouseEnter={(e) => (e.currentTarget.style.border = "2px solid #555")} // On hover, show a darker border
+              onClick={() => updateShape(shape.id, { color: color.hexValue })}
+              onMouseEnter={(e) => (e.currentTarget.style.border = "2px solid #555")}
               onMouseLeave={(e) =>
                 (e.currentTarget.style.border =
-                  shape.color === color ? "2px solid black" : "2px solid #ccc")
-              } // Revert to original border
+                  shape.color === color.hexValue ? "2px solid black" : "2px solid #ccc")
+              }
             />
           ))}
         </div>
       </div>
       <h3>Edit Shape</h3>
-      {/* <label>
-        Color:
-        <input type="color" name="color" value={shape.color} onChange={handleChange} />
-      </label> */}
+
       {shape.type === "circle" && (
         <label>
           Radius:
