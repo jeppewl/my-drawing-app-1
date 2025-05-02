@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
+import type { Shape } from "../types/shape";
 
-type Shape = {
-  id: string;
-  type: "circle" | "rectangle";
-  x: number;
-  y: number;
-  radius?: number; // for circle
-  width?: number; // for rectangle
-  height?: number; // for rectangle
-  color: string;
-};
+// type Shape = {
+//   id: string;
+//   type: "circle" | "rectangle";
+//   x: number;
+//   y: number;
+//   radius?: number; // for circle
+//   width?: number; // for rectangle
+//   height?: number; // for rectangle
+//   color: string;
+// };
 
 type CanvasProps = {
   shapes: Shape[];
@@ -18,7 +19,7 @@ type CanvasProps = {
   updateShape: (id: string, newProps: Partial<Shape>) => void;
 };
 
-const Canvas: React.FC<CanvasProps> = ({
+const ShapesCanvas: React.FC<CanvasProps> = ({
   shapes,
   selectedShape,
   setSelectedShape,
@@ -35,11 +36,13 @@ const Canvas: React.FC<CanvasProps> = ({
     const shape = shapes.find((s) => s.id === shapeId);
     if (!shape) return;
 
-    const svg = event.currentTarget.closest("svg");
-    if (!svg) return;
+    // const svg = event.currentTarget.closest("svg");
+    const svgRect = svgRef.current?.getBoundingClientRect();
+    // if (!svg) return;
+    if (!svgRect) return;
 
-    const svgRect = svg.getBoundingClientRect();
-    //   const svgRect = event.currentTarget.ownerSVGElement?.getBoundingClientRect();
+    // const svgRect = svg.getBoundingClientRect();
+
     const offsetX = event.clientX - svgRect.left - shape.x;
     const offsetY = event.clientY - svgRect.top - shape.y;
 
@@ -117,4 +120,4 @@ const Canvas: React.FC<CanvasProps> = ({
   );
 };
 
-export default Canvas;
+export default ShapesCanvas;

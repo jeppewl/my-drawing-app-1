@@ -47,3 +47,5 @@ for (let i = 0; i < test.getIndices(); i++) {
 }
 
 console.log(test);
+
+export default IntZigzag;

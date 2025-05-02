@@ -1,0 +1,47 @@
+{
+  "brand": "rgbcmykmodel",
+  "sample": "theory",
+  "description": "model for rgb split program",
+  "colors": [
+    {
+      "code": 7,
+      "name": "White",
+      "hexValue": "#ffffff"
+    },
+    {
+      "code": 1,
+      "name": "Red",
+      "hexValue": "#FF0000"
+    },
+    {
+      "code": 2,
+      "name": "Green",
+      "hexValue": "#00FF00"
+    },
+    {
+      "code": 4,
+      "name": "Blue",
+      "hexValue": "#0000FF"
+    },
+    {
+      "code": 3,
+      "name": "Yellow",
+      "hexValue": "#FFFF00"
+    },
+    {
+      "code": 5,
+      "name": "Magenta",
+      "hexValue": "#FF00FF"
+    },
+    {
+      "code": 6,
+      "name": "Cyan",
+      "hexValue": "#00FFFF"
+    },
+    {
+      "code": 0,
+      "name": "Black",
+      "hexValue": "#000000"
+    }
+  ]
+}

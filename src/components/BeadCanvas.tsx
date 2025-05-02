@@ -1,7 +1,8 @@
 import React from "react";
-import { mapToHueGradient, sin60 } from "../utils/colorUtils.js";
+import { mapToHueGradient, sin60 } from "../utils/colorUtils";
 
-function BeadCanvas() {
+// function BeadCanvas() {
+const BeadCanvas: React.FC = () => {
   const rowLength = 7;
   const rows = 10;
   const dotCount = rowLength * rows;
@@ -11,19 +12,19 @@ function BeadCanvas() {
   const startY = 52;
   const startX = 23;
 
-  function getRowFromI(i) {
+  function getRowFromI(i: number): number {
     return Math.floor(i / rowLength);
   }
 
-  function getPosFromI(i) {
+  function getPosFromI(i: number): number {
     return i % rowLength;
   }
 
-  function getStartX(i) {
+  function getStartX(i: number): number {
     return getRowFromI(i) % 2 === 0 ? startX : startX + rad;
   }
 
-  function getStartY(i) {}
+  function getStartY(i: number) {}
 
   for (let i = 0; i < hexArr.length; i++) {
     hexArr[i] = mapToHueGradient(i * (100 / dotCount), 0, 100);
@@ -47,6 +48,6 @@ function BeadCanvas() {
       <button onClick={() => console.log(hexArr)}>Hej</button>
     </>
   );
-}
+};
 
 export default BeadCanvas;
