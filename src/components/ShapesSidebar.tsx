@@ -3,26 +3,6 @@ import type { Shape } from "../types/shape";
 // import colorData from "../data/palette-ideal-rgb-cmyk.json";
 import colorData from "../data/palette-hama-IMG_3973.json";
 
-// type BaseShape = {
-//   id: string;
-//   x: number;
-//   y: number;
-//   color: string;
-// };
-
-// type CircleShape = BaseShape & {
-//   type: "circle";
-//   radius: number;
-// };
-
-// type RectangleShape = BaseShape & {
-//   type: "rectangle";
-//   width: number;
-//   height: number;
-// };
-
-// type Shape = CircleShape | RectangleShape;
-
 interface SidebarProps {
   shape: Shape | null;
   updateShape: (id: string, newProps: Partial<Shape>) => void;
@@ -38,7 +18,7 @@ const presetColors: Color[] = colorData.colors;
 
 // const presetColors = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93"];
 
-const Sidebar: React.FC<SidebarProps> = ({ shape, updateShape }) => {
+const ShapesSidebar: React.FC<SidebarProps> = ({ shape, updateShape }) => {
   if (!shape) {
     return <div className="sidebar">No shape selected</div>;
   }
@@ -55,34 +35,32 @@ const Sidebar: React.FC<SidebarProps> = ({ shape, updateShape }) => {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(24px, 1fr))",
-            gap: "0.5rem",
-            maxWidth: "200px", // optional, controls wrapping
+            gridTemplateColumns: "repeat(auto-fit, minmax(24px, 0fr))",
+            gap: "2px",
           }}
         >
           {presetColors.map((color) => (
-            <button
-              key={color.hexValue}
-              title={color.name} // Show color name on hover
-              style={{
-                backgroundColor: color.hexValue,
-                border: shape.color === color.hexValue ? "2px solid black" : "2px solid #ccc",
-                width: "24px",
-                height: "24px",
-                borderRadius: "0", // square
-                transition: "border-color 0.2s",
-                cursor: "pointer",
-              }}
-              onClick={() => updateShape(shape.id, { color: color.hexValue })}
-              onMouseEnter={(e) => (e.currentTarget.style.border = "2px solid #555")}
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.border =
-                  shape.color === color.hexValue ? "2px solid black" : "2px solid #ccc")
-              }
-            />
+            <div key={color.hexValue}>
+              <button
+                title={color.name}
+                style={{
+                  backgroundColor: color.hexValue,
+                  width: "24px",
+                  height: "24px",
+                  padding: 0,
+                  margin: 0,
+                  border: "none",
+                  borderRadius: "0",
+                  cursor: "pointer",
+                  display: "block",
+                }}
+                onClick={() => updateShape(shape.id, { color: color.hexValue })}
+              />
+            </div>
           ))}
         </div>
       </div>
+
       <h3>Edit Shape</h3>
 
       {shape.type === "circle" && (
@@ -113,4 +91,4 @@ const Sidebar: React.FC<SidebarProps> = ({ shape, updateShape }) => {
   );
 };
 
-export default Sidebar;
+export default ShapesSidebar;

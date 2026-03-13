@@ -30,10 +30,14 @@ const BeadCanvas: React.FC = () => {
     hexArr[i] = mapToHueGradient(i * (100 / dotCount), 0, 100);
   }
 
+  const handleMouseOver = (id: number, event: React.MouseEvent<SVGCircleElement>) => {
+    console.log("hover circle", id);
+  };
+
   return (
     <>
       <button onClick={() => console.log(getStartX(9))}>Test</button>
-      <svg width={500} height={500} className="canvas">
+      <svg width={800} height={500} className="canvas">
         {beadIds.map((id) => (
           <React.Fragment key={id}>
             <circle
@@ -41,6 +45,7 @@ const BeadCanvas: React.FC = () => {
               cy={(getRowFromI(id) * 2 * sin60(rad) + startY).toFixed(2)}
               r={rad.toFixed(2)}
               fill={hexArr[id]}
+              onMouseOver={(e) => handleMouseOver(id, e)}
             />
           </React.Fragment>
         ))}
