@@ -1,16 +1,13 @@
 import React, { useRef, useState } from "react";
 import { mapToHueGradient, sin60 } from "../utils/colorUtils";
 
-// function BeadCanvas() {
 const BeadCanvas: React.FC = () => {
   const isDragging = useRef(false);
-  const hasMoved = useRef(false);
   const touchedCircle = useRef<number | null>(null);
   const startPos = useRef({ x: 0, y: 0 });
-  const thresMov = 5;
 
-  const rowLength = 7;
-  const rows = 10;
+  const rowLength = 12;
+  const rows = 18;
   const dotCount = rowLength * rows;
   const beadIds = Array.from({ length: dotCount }, (_, i) => i + 0);
 
@@ -22,9 +19,20 @@ const BeadCanvas: React.FC = () => {
     return arr;
   });
 
-  const rad = 24.048;
+  const rad = 14.048;
   const startY = 52;
   const startX = 130;
+
+  const undoStack = useRef<PaintChange[][]>([]);
+  const redoStack = useRef<PaintChange[][]>([]);
+  const currentStroke = useRef<PaintChange[]>([]);
+  const visitedInStroke = useRef<Set<number>>(new Set());
+
+  type PaintChange = {
+    id: number;
+    prevColor: string;
+    newColor: string;
+  };
 
   function getRowFromI(i: number): number {
     return Math.floor(i / rowLength);
@@ -45,25 +53,22 @@ const BeadCanvas: React.FC = () => {
   };
 
   const handleMouseDown = (e: React.MouseEvent, id: number) => {
-    touchedCircle.current = id;
     isDragging.current = true;
-    hasMoved.current = false;
+
+    currentStroke.current = [];
+    visitedInStroke.current.clear();
+    redoStack.current = [];
+
     startPos.current = { x: e.clientX, y: e.clientY };
+    touchedCircle.current = id;
+
+    paintCircle(id);
   };
 
   const handleMouseUp = () => {
     const id = touchedCircle.current;
 
-    if (!hasMoved.current && id !== null) {
-      console.log("circle clicked", id);
-      setHexArr((prev) => {
-        const next = [...prev];
-        next[id] = "#CCCCCC";
-        return next;
-      });
-    } else if (hasMoved.current) {
-      console.log("flyttet siden mousedown");
-    }
+    undoStack.current.push(currentStroke.current);
 
     isDragging.current = false;
     touchedCircle.current = null;
@@ -71,15 +76,70 @@ const BeadCanvas: React.FC = () => {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging.current) return;
+  };
 
-    const dx = e.clientX - startPos.current.x;
-    const dy = e.clientY - startPos.current.y;
-
-    if (Math.abs(dx) > thresMov || Math.abs(dy) > thresMov) {
-      hasMoved.current = true;
+  const handleMouseEnter = (id: number) => {
+    if (isDragging.current) {
+      paintCircle(id);
     }
-    // console.log("dragging", e.clientX, e.clientY);
-    // console.log("dx:", dx, "dy", dy);
+  };
+
+  function paintCircle(id: number) {
+    if (visitedInStroke.current.has(id)) return;
+
+    visitedInStroke.current.add(id);
+
+    const prevColor = hexArr[id];
+
+    if (prevColor === "#BBBBBB") return;
+
+    const newColor = "#BBBBBB";
+
+    currentStroke.current.push({
+      id,
+      prevColor,
+      newColor,
+    });
+
+    setHexArr((prev) => {
+      const next = [...prev];
+      next[id] = "#BBBBBB";
+      return next;
+    });
+  }
+
+  const handleUndo = (e: React.MouseEvent) => {
+    const stroke = undoStack.current.pop();
+    if (!stroke) return;
+
+    redoStack.current.push(stroke);
+
+    setHexArr((prev) => {
+      const next = [...prev];
+
+      stroke.forEach((change) => {
+        next[change.id] = change.prevColor;
+      });
+
+      return next;
+    });
+  };
+
+  const handleRedo = (e: React.MouseEvent) => {
+    const stroke = redoStack.current.pop();
+    if (!stroke) return;
+
+    undoStack.current.push(stroke);
+
+    setHexArr((prev) => {
+      const next = [...prev];
+
+      stroke.forEach((change) => {
+        next[change.id] = change.newColor;
+      });
+
+      return next;
+    });
   };
 
   return (
@@ -91,6 +151,7 @@ const BeadCanvas: React.FC = () => {
         className="canvas"
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        style={{ cursor: "crosshair", background: "#AAA" }}
       >
         {beadIds.map((id) => (
           <React.Fragment key={id}>
@@ -99,13 +160,16 @@ const BeadCanvas: React.FC = () => {
               cy={(getRowFromI(id) * 2 * sin60(rad) + startY).toFixed(2)}
               r={rad.toFixed(2)}
               fill={hexArr[id]}
-              // onMouseOver={(e) => handleMouseOver(id, e)}
               onMouseDown={(e) => handleMouseDown(e, id)}
+              onMouseEnter={(e) => handleMouseEnter(id)}
             />
           </React.Fragment>
         ))}
       </svg>
-      {/* <button onClick={() => console.log(hexArr)}>Hej</button> */}
+      <div>
+        <button onClick={(e) => handleUndo(e)}>Undo</button>
+        <button onClick={(e) => handleRedo(e)}>Redo</button>
+      </div>
     </>
   );
 };
