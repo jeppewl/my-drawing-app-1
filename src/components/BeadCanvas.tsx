@@ -1,38 +1,28 @@
 import React, { useRef, useState } from "react";
 import { mapToHueGradient, sin60 } from "../utils/colorUtils";
+import { PaintChange } from "../types/paintchange";
 
-const BeadCanvas: React.FC = () => {
+const BeadCanvas: React.FC<{
+  rowLength: number;
+  rows: number;
+  dotCount: number;
+  hexArr: string[];
+  setHexArr: React.Dispatch<React.SetStateAction<string[]>>;
+  undoStack: React.MutableRefObject<PaintChange[][]>;
+  redoStack: React.MutableRefObject<PaintChange[][]>;
+}> = ({ rowLength, rows, dotCount, hexArr, setHexArr, undoStack, redoStack }) => {
   const isDragging = useRef(false);
   const touchedCircle = useRef<number | null>(null);
   const startPos = useRef({ x: 0, y: 0 });
 
-  const rowLength = 12;
-  const rows = 18;
-  const dotCount = rowLength * rows;
   const beadIds = Array.from({ length: dotCount }, (_, i) => i + 0);
-
-  const [hexArr, setHexArr] = useState(() => {
-    const arr = Array.from({ length: dotCount }, (_, i) =>
-      mapToHueGradient(i * (100 / dotCount), 0, 100),
-    );
-
-    return arr;
-  });
 
   const rad = 14.048;
   const startY = 52;
   const startX = 130;
 
-  const undoStack = useRef<PaintChange[][]>([]);
-  const redoStack = useRef<PaintChange[][]>([]);
   const currentStroke = useRef<PaintChange[]>([]);
   const visitedInStroke = useRef<Set<number>>(new Set());
-
-  type PaintChange = {
-    id: number;
-    prevColor: string;
-    newColor: string;
-  };
 
   function getRowFromI(i: number): number {
     return Math.floor(i / rowLength);
@@ -108,40 +98,6 @@ const BeadCanvas: React.FC = () => {
     });
   }
 
-  const handleUndo = (e: React.MouseEvent) => {
-    const stroke = undoStack.current.pop();
-    if (!stroke) return;
-
-    redoStack.current.push(stroke);
-
-    setHexArr((prev) => {
-      const next = [...prev];
-
-      stroke.forEach((change) => {
-        next[change.id] = change.prevColor;
-      });
-
-      return next;
-    });
-  };
-
-  const handleRedo = (e: React.MouseEvent) => {
-    const stroke = redoStack.current.pop();
-    if (!stroke) return;
-
-    undoStack.current.push(stroke);
-
-    setHexArr((prev) => {
-      const next = [...prev];
-
-      stroke.forEach((change) => {
-        next[change.id] = change.newColor;
-      });
-
-      return next;
-    });
-  };
-
   return (
     <>
       <button onClick={() => console.log(getStartX(9))}>Test</button>
@@ -166,10 +122,6 @@ const BeadCanvas: React.FC = () => {
           </React.Fragment>
         ))}
       </svg>
-      <div>
-        <button onClick={(e) => handleUndo(e)}>Undo</button>
-        <button onClick={(e) => handleRedo(e)}>Redo</button>
-      </div>
     </>
   );
 };

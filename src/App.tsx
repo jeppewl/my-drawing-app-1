@@ -56,7 +56,15 @@ const App = () => {
           />
         }
       </div>
-      <BeadCanvas />
+      {/* <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        <BeadCanvas />
+      </div> */}
     </div>
   );
 };
