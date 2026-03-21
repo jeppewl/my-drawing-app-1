@@ -1,6 +1,8 @@
 import React, { useRef, useState } from "react";
 import { mapToHueGradient, sin60 } from "../utils/colorUtils";
 import { PaintChange } from "../types/paintchange";
+import "../styles.css";
+import { ColorData } from "../types/colordata";
 
 const BeadCanvas: React.FC<{
   rowLength: number;
@@ -10,7 +12,8 @@ const BeadCanvas: React.FC<{
   setHexArr: React.Dispatch<React.SetStateAction<string[]>>;
   undoStack: React.MutableRefObject<PaintChange[][]>;
   redoStack: React.MutableRefObject<PaintChange[][]>;
-}> = ({ rowLength, rows, dotCount, hexArr, setHexArr, undoStack, redoStack }) => {
+  workingColor: ColorData | null;
+}> = ({ rowLength, rows, dotCount, hexArr, setHexArr, undoStack, redoStack, workingColor }) => {
   const isDragging = useRef(false);
   const touchedCircle = useRef<number | null>(null);
   const startPos = useRef({ x: 0, y: 0 });
@@ -79,11 +82,13 @@ const BeadCanvas: React.FC<{
 
     visitedInStroke.current.add(id);
 
+    const activeHex = workingColor?.hexValue ?? "";
+
     const prevColor = hexArr[id];
 
-    if (prevColor === "#BBBBBB") return;
+    if (prevColor === activeHex) return;
 
-    const newColor = "#BBBBBB";
+    const newColor = activeHex;
 
     currentStroke.current.push({
       id,
@@ -93,14 +98,13 @@ const BeadCanvas: React.FC<{
 
     setHexArr((prev) => {
       const next = [...prev];
-      next[id] = "#BBBBBB";
+      next[id] = activeHex;
       return next;
     });
   }
 
   return (
     <>
-      <button onClick={() => console.log(getStartX(9))}>Test</button>
       <svg
         width={800}
         height={500}
@@ -117,7 +121,7 @@ const BeadCanvas: React.FC<{
               r={rad.toFixed(2)}
               fill={hexArr[id]}
               onMouseDown={(e) => handleMouseDown(e, id)}
-              onMouseEnter={(e) => handleMouseEnter(id)}
+              onMouseEnter={() => handleMouseEnter(id)}
             />
           </React.Fragment>
         ))}

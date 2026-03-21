@@ -2,18 +2,14 @@ import { useState } from "react";
 import ShapesSidebar from "./components/ShapesSidebar";
 import "./styles.css";
 import Toolbar from "./components/Toolbar";
-import BeadCanvas from "./components/BeadCanvas";
 import ShapesCanvas from "./components/ShapesCanvas";
 import IntZigzag from "./datastructures/IntZigzag";
 import type { Shape, ShapeType } from "./types/shape";
 
 const App = () => {
-  // const [shapes, setShapes] = useState([]); // Stores all shapes
   const [shapes, setShapes] = useState<Shape[]>([]); // Stores all shapes
-  // const [selectedShape, setSelectedShape] = useState(null); // Tracks the selected shape
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null); // Tracks the selected shape
 
-  // Function to add a new shape
   const createShape = (type: ShapeType) => {
     const newShape: Shape = {
       id: crypto.randomUUID(), // returns a string UUID
@@ -28,7 +24,6 @@ const App = () => {
     setShapes([...shapes, newShape]);
   };
 
-  // Function to update a shape's properties
   const updateShape = (id: string, newProps: Partial<Shape>) => {
     setShapes((prevShapes) =>
       prevShapes.map((shape) => (shape.id === id ? { ...shape, ...newProps } : shape)),
@@ -39,7 +34,6 @@ const App = () => {
 
   return (
     <div className="app">
-      {/* <h2>{zzTest.getIndices()}</h2> */}
       <Toolbar createShape={createShape} />
       <div className="workspace">
         <ShapesCanvas
@@ -49,22 +43,11 @@ const App = () => {
           updateShape={updateShape}
         />
 
-        {
-          <ShapesSidebar
-            shape={shapes.find((shape) => shape.id === selectedShapeId) || null}
-            updateShape={updateShape}
-          />
-        }
+        <ShapesSidebar
+          shape={shapes.find((shape) => shape.id === selectedShapeId) || null}
+          updateShape={updateShape}
+        />
       </div>
-      {/* <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
-      >
-        <BeadCanvas />
-      </div> */}
     </div>
   );
 };

@@ -3,9 +3,12 @@ import BeadCanvas from "./components/BeadCanvas";
 import { mapToHueGradient } from "./utils/colorUtils";
 import { PaintChange } from "./types/paintchange";
 import BeadToolbar from "./components/BeadToolbar";
+import PalettePanel from "./components/PalettePanel";
+import { ColorData } from "./types/colordata";
+import paletteData from "./data/palette-hama-IMG_3973.json";
 
 const BeadApp = () => {
-  const rowLength = 12;
+  const rowLength = 14;
   const rows = 18;
   const dotCount = rowLength * rows;
 
@@ -16,6 +19,10 @@ const BeadApp = () => {
 
     return arr;
   });
+
+  const beadColors: ColorData[] = paletteData.colors;
+
+  const [workingColor, setWorkingColor] = useState<ColorData | null>(beadColors[0] ?? null);
 
   const undoStack = useRef<PaintChange[][]>([]);
   const redoStack = useRef<PaintChange[][]>([]);
@@ -64,15 +71,33 @@ const BeadApp = () => {
         }}
       >
         <BeadToolbar handleUndo={handleUndo} handleRedo={handleRedo} />
-        <BeadCanvas
-          rowLength={rowLength}
-          rows={rows}
-          dotCount={dotCount}
-          hexArr={hexArr}
-          setHexArr={setHexArr}
-          undoStack={undoStack}
-          redoStack={redoStack}
-        />
+        <div style={{ display: "flex", flexDirection: "row" }}>
+          <BeadCanvas
+            rowLength={rowLength}
+            rows={rows}
+            dotCount={dotCount}
+            hexArr={hexArr}
+            setHexArr={setHexArr}
+            undoStack={undoStack}
+            redoStack={redoStack}
+            workingColor={workingColor}
+          />
+          <div
+            style={{
+              boxSizing: "border-box",
+              background: "#d4d492",
+              width: "200px",
+              height: "500px",
+              padding: "10px",
+            }}
+          >
+            <PalettePanel
+              beadColors={beadColors}
+              workingColor={workingColor}
+              setWorkingColor={setWorkingColor}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -8,17 +8,19 @@ const BeadToolbar: React.FC<{
     <div
       style={{
         boxSizing: "border-box",
-        background: "#f88",
-        width: "800px",
+        background: "rgb(105, 130, 134)",
+        width: "1000px",
+        height: "100px",
         justifyContent: "center",
+        alignItems: "center",
         display: "flex",
         flexDirection: "row",
         padding: "5px",
         gap: "10px",
       }}
     >
-      <button onClick={(e) => handleUndo(e)}>Undo</button>
-      <button onClick={(e) => handleRedo(e)}>Redo</button>
+      <button onClick={handleUndo}>Undo</button>
+      <button onClick={handleRedo}>Redo</button>
     </div>
   );
 };

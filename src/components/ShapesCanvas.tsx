@@ -1,17 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { Shape } from "../types/shape";
 
-// type Shape = {
-//   id: string;
-//   type: "circle" | "rectangle";
-//   x: number;
-//   y: number;
-//   radius?: number; // for circle
-//   width?: number; // for rectangle
-//   height?: number; // for rectangle
-//   color: string;
-// };
-
 type CanvasProps = {
   shapes: Shape[];
   selectedShape: string | null;
