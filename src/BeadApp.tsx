@@ -8,8 +8,8 @@ import { ColorData } from "./types/colordata";
 import paletteData from "./data/palette-hama-IMG_3973.json";
 
 const BeadApp = () => {
-  const rowLength = 14;
-  const rows = 18;
+  const rowLength = 18;
+  const rows = 16;
   const dotCount = rowLength * rows;
 
   const [hexArr, setHexArr] = useState(() => {

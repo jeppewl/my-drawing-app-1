@@ -23,9 +23,19 @@ const PalettePanel: React.FC<{
           style={{
             background: colData.hexValue,
             boxSizing: "border-box",
-            height: "30px",
-            border: workingColor?.code === colData.code ? "2px solid black" : "2px solid #ccc",
+            height: "35px",
+            width: "35px",
+            borderRadius: "50%",
+            border: workingColor?.code === colData.code ? "2px solid white" : "2px solid #555",
             cursor: "pointer",
+
+            // 👇 tilføj disse
+            display: "flex",
+            alignItems: "center", // vertikal centrering
+            justifyContent: "center", // horisontal centrering
+            color: "#EEE",
+            fontSize: "0.875rem", // ≈ 14px hvis root er 16px (meget almindeligt)
+            fontWeight: "600",
           }}
         >
           {colData.code}
