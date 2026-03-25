@@ -48,46 +48,48 @@ const BeadCanvas: React.FC<{
 
   function getStartY(i: number) {}
 
-  const handleMouseOver = (id: number, event: React.MouseEvent<SVGCircleElement>) => {
-    // console.log("hover circle", id);
-  };
+  const handlePointerDownCircle = (e: React.PointerEvent<SVGCircleElement>, id: number) => {
+    e.stopPropagation(); // 👈 vigtigt!
 
-  const handlePointerDown = (e: React.PointerEvent<SVGCircleElement>, id: number) => {
-    // 👉 kun venstre klik på mouse
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-
-    // reset gesture state
-    isDragging.current = false;
+    e.currentTarget.setPointerCapture(e.pointerId);
     isPointerDown.current = true;
-
     startPos.current = { x: e.clientX, y: e.clientY };
-    touchedCircle.current = id;
 
-    // 👇 vi starter IKKE stroke endnu!
-    // det sker først når vi ved det er paint
+    if (e.pointerType === "mouse") {
+      // 👇 venstreklik = paint mode
+      if (e.button === 0) {
+        isPainting.current = true;
+        startStroke();
+        paintCircle(id);
+      }
 
-    (e.target as Element).setPointerCapture(e.pointerId);
+      // 👇 højreklik = pan mode
+      if (e.button === 2) {
+        isDragging.current = true;
+      }
+    }
+
+    // 📱 TOUCH
+    if (e.pointerType === "touch") {
+      // start som "maybe tap"
+      isDragging.current = false;
+      touchedCircle.current = id;
+    }
   };
 
-  const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
-    // TAP = paint
-    if (!isDragging.current && touchedCircle.current !== null) {
-      startStroke();
-      paintCircle(touchedCircle.current);
-      endStroke();
+  const handlePointerDownSvg = (e: React.PointerEvent<SVGSVGElement>) => {
+    isPointerDown.current = true;
+    startPos.current = { x: e.clientX, y: e.clientY };
+
+    // 🖱️ højreklik → pan
+    if (e.pointerType === "mouse" && e.button === 2) {
+      isDragging.current = true;
     }
 
-    // Drag paint = afslut stroke
-    else if (isPainting.current) {
-      endStroke();
+    // 📱 touch → mulig pan
+    if (e.pointerType === "touch") {
+      isDragging.current = false;
     }
-
-    // reset
-    isDragging.current = false;
-    isPointerDown.current = false;
-    touchedCircle.current = null;
-    startPos.current = null;
-    isPainting.current = false;
   };
 
   const DRAG_THRESHOLD = 5;
@@ -97,15 +99,45 @@ const BeadCanvas: React.FC<{
 
     const dx = e.clientX - startPos.current.x;
     const dy = e.clientY - startPos.current.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
 
-    // 👉 detect drag
-    if (!isDragging.current && dist > DRAG_THRESHOLD) {
-      isDragging.current = true;
+    // 📱 TOUCH → detect drag = pan
+    if (e.pointerType === "touch") {
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (!isDragging.current && dist > DRAG_THRESHOLD) {
+        isDragging.current = true;
+      }
+
+      if (isDragging.current) {
+        setViewBox(([x, y, w, h]) => {
+          let newX = x - dx;
+          let newY = y - dy;
+
+          const maxX = contentWidth - w;
+          const maxY = contentHeight - h;
+
+          newX = Math.max(0, Math.min(newX, maxX));
+          newY = Math.max(0, Math.min(newY, maxY));
+
+          return [newX, newY, w, h];
+        });
+      }
     }
 
-    // 👉 PAN (kun hvis drag)
-    if (isDragging.current) {
+    // 🖱️ MOUSE PAINT
+    if (isPainting.current) {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+
+      if (el?.tagName === "circle") {
+        const id = Number(el.getAttribute("data-id"));
+        if (!isNaN(id)) paintCircle(id);
+      }
+    }
+
+    // 🖱️ MOUSE PAN
+    if (isDragging.current && e.pointerType === "mouse") {
+      e.currentTarget.style.cursor = "grabbing";
+      // setViewBox(([x, y, w, h]) => [x - dx, y - dy, w, h]);
       setViewBox(([x, y, w, h]) => {
         let newX = x - dx;
         let newY = y - dy;
@@ -118,9 +150,32 @@ const BeadCanvas: React.FC<{
 
         return [newX, newY, w, h];
       });
-
-      startPos.current = { x: e.clientX, y: e.clientY };
     }
+
+    startPos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    // 📱 TAP → paint
+    if (!isDragging.current && touchedCircle.current !== null) {
+      startStroke();
+      paintCircle(touchedCircle.current);
+      endStroke();
+    }
+
+    // 🖱️ paint afslut
+    if (isPainting.current) {
+      endStroke();
+    }
+
+    isPainting.current = false;
+    isDragging.current = false;
+    isPointerDown.current = false;
+    touchedCircle.current = null;
+    startPos.current = null;
+
+    e.currentTarget.style.cursor = "crosshair";
+    e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
   const handlePointerEnter = (e: React.PointerEvent<SVGCircleElement>, id: number) => {
@@ -201,14 +256,21 @@ const BeadCanvas: React.FC<{
   }
 
   return (
-    <>
+    <div style={{ position: "relative", width: 800 }}>
       <svg
         width={800}
         height={500}
         className="canvas"
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        style={{ cursor: "crosshair", background: "#AAA", touchAction: "none" }}
+        onPointerDown={handlePointerDownSvg}
+        style={{
+          cursor: "crosshair",
+          background: "#AAA",
+          touchAction: "none",
+          display: "block",
+          position: "relative",
+        }}
         onContextMenu={(e) => e.preventDefault()}
         viewBox={viewBox.join(" ")}
         onWheel={handleWheel}
@@ -216,17 +278,38 @@ const BeadCanvas: React.FC<{
         {beadIds.map((id) => (
           <React.Fragment key={id}>
             <circle
+              data-id={id}
               cx={(getPosFromI(id) * 2 * rad + getStartX(id)).toFixed(2)}
               cy={(getRowFromI(id) * 2 * sin60(rad) + startY).toFixed(2)}
               r={rad.toFixed(2)}
               fill={hexArr[id]}
-              onPointerDown={(e) => handlePointerDown(e, id)}
+              onPointerDown={(e) => handlePointerDownCircle(e, id)}
               onPointerEnter={(e) => handlePointerEnter(e, id)}
             />
           </React.Fragment>
         ))}
       </svg>
-    </>
+      <div
+        style={{
+          position: "absolute",
+          bottom: 10,
+          left: 10,
+          background: "rgba(0, 0, 0, 0.363)",
+          color: "#fff",
+          padding: "4px 8px",
+          borderRadius: 4,
+          fontSize: 12,
+          pointerEvents: "none",
+        }}
+      >
+        Hej
+      </div>
+      <div
+        onPointerUp={(e) => {
+          e.pointerId;
+        }}
+      ></div>
+    </div>
   );
 };
 
