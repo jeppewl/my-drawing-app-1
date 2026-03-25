@@ -1,5 +1,7 @@
+import { ColorData } from "./colordata";
+
 export type PaintChange = {
   id: number;
-  prevColor: string;
-  newColor: string;
+  prevColor: ColorData;
+  newColor: ColorData;
 };

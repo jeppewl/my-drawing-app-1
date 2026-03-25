@@ -12,17 +12,17 @@ const BeadApp = () => {
   const rows = 16;
   const dotCount = rowLength * rows;
 
-  const [hexArr, setHexArr] = useState(() => {
-    const arr = Array.from({ length: dotCount }, (_, i) =>
-      mapToHueGradient(i * (100 / dotCount), 0, 100),
-    );
-
-    return arr;
-  });
-
   const beadColors: ColorData[] = paletteData.colors;
 
   const [workingColor, setWorkingColor] = useState<ColorData | null>(beadColors[0] ?? null);
+
+  const [colorArr, setColorArr] = useState<ColorData[]>(() => {
+    const firstColor = beadColors[0];
+
+    if (!firstColor) return [];
+
+    return Array.from({ length: dotCount }, () => firstColor);
+  });
 
   const undoStack = useRef<PaintChange[][]>([]);
   const redoStack = useRef<PaintChange[][]>([]);
@@ -33,7 +33,7 @@ const BeadApp = () => {
 
     redoStack.current.push(stroke);
 
-    setHexArr((prev) => {
+    setColorArr((prev) => {
       const next = [...prev];
 
       stroke.forEach((change) => {
@@ -50,7 +50,7 @@ const BeadApp = () => {
 
     undoStack.current.push(stroke);
 
-    setHexArr((prev) => {
+    setColorArr((prev) => {
       const next = [...prev];
 
       stroke.forEach((change) => {
@@ -76,8 +76,8 @@ const BeadApp = () => {
             rowLength={rowLength}
             rows={rows}
             dotCount={dotCount}
-            hexArr={hexArr}
-            setHexArr={setHexArr}
+            colorArr={colorArr}
+            setColorArr={setColorArr}
             undoStack={undoStack}
             redoStack={redoStack}
             workingColor={workingColor}

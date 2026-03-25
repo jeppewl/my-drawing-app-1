@@ -8,12 +8,12 @@ const BeadCanvas: React.FC<{
   rowLength: number;
   rows: number;
   dotCount: number;
-  hexArr: string[];
-  setHexArr: React.Dispatch<React.SetStateAction<string[]>>;
-  undoStack: React.MutableRefObject<PaintChange[][]>;
-  redoStack: React.MutableRefObject<PaintChange[][]>;
+  colorArr: ColorData[];
+  setColorArr: React.Dispatch<React.SetStateAction<ColorData[]>>;
+  undoStack: React.RefObject<PaintChange[][]>;
+  redoStack: React.RefObject<PaintChange[][]>;
   workingColor: ColorData | null;
-}> = ({ rowLength, rows, dotCount, hexArr, setHexArr, undoStack, redoStack, workingColor }) => {
+}> = ({ rowLength, rows, dotCount, colorArr, setColorArr, undoStack, redoStack, workingColor }) => {
   const isDragging = useRef(false);
   const isPointerDown = useRef(false);
   const touchedCircle = useRef<number | null>(null);
@@ -24,9 +24,8 @@ const BeadCanvas: React.FC<{
   const startY = 50;
   const startX = 50;
 
-  const contentWidth = rowLength * 2 * rad + 100; // antal kolonner * diameter
-  const contentHeight = rows * 2 * sin60(rad) + 100; // antal rækker * højden på hex
-
+  const contentWidth = rowLength * 2 * rad + 100;
+  const contentHeight = rows * 2 * sin60(rad) + 100;
   const currentStroke = useRef<PaintChange[]>([]);
   const visitedInStroke = useRef<Set<number>>(new Set());
 
@@ -230,17 +229,16 @@ const BeadCanvas: React.FC<{
   }
 
   function paintCircle(id: number) {
+    if (!workingColor) return;
     if (visitedInStroke.current.has(id)) return;
 
     visitedInStroke.current.add(id);
 
-    const activeHex = workingColor?.hexValue ?? "";
+    const prevColor = colorArr[id];
 
-    const prevColor = hexArr[id];
+    if (prevColor === workingColor) return;
 
-    if (prevColor === activeHex) return;
-
-    const newColor = activeHex;
+    const newColor = workingColor;
 
     currentStroke.current.push({
       id,
@@ -248,9 +246,9 @@ const BeadCanvas: React.FC<{
       newColor,
     });
 
-    setHexArr((prev) => {
+    setColorArr((prev) => {
       const next = [...prev];
-      next[id] = activeHex;
+      next[id] = workingColor;
       return next;
     });
   }
@@ -282,7 +280,7 @@ const BeadCanvas: React.FC<{
               cx={(getPosFromI(id) * 2 * rad + getStartX(id)).toFixed(2)}
               cy={(getRowFromI(id) * 2 * sin60(rad) + startY).toFixed(2)}
               r={rad.toFixed(2)}
-              fill={hexArr[id]}
+              fill={colorArr[id].hexValue}
               onPointerDown={(e) => handlePointerDownCircle(e, id)}
               onPointerEnter={(e) => handlePointerEnter(e, id)}
             />
