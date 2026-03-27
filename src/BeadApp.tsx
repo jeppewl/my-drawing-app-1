@@ -15,6 +15,10 @@ const BeadApp = () => {
   const beadColors: ColorData[] = paletteData.colors;
 
   const [workingColor, setWorkingColor] = useState<ColorData | null>(beadColors[0] ?? null);
+  const [isPicking, setIsPicking] = useState(false);
+  const togglePicking = () => {
+    setIsPicking((prev) => !prev);
+  };
 
   const [colorArr, setColorArr] = useState<ColorData[]>(() => {
     const firstColor = beadColors[0];
@@ -70,7 +74,12 @@ const BeadApp = () => {
           alignItems: "center",
         }}
       >
-        <BeadToolbar handleUndo={handleUndo} handleRedo={handleRedo} />
+        <BeadToolbar
+          isPicking={isPicking}
+          togglePicking={togglePicking}
+          handleUndo={handleUndo}
+          handleRedo={handleRedo}
+        />
         <div style={{ display: "flex", flexDirection: "row" }}>
           <BeadCanvas
             rowLength={rowLength}
@@ -81,6 +90,9 @@ const BeadApp = () => {
             undoStack={undoStack}
             redoStack={redoStack}
             workingColor={workingColor}
+            setWorkingColor={setWorkingColor}
+            isPicking={isPicking}
+            setIsPicking={setIsPicking}
           />
           <div
             style={{

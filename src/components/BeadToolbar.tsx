@@ -1,9 +1,11 @@
 import React from "react";
 
 const BeadToolbar: React.FC<{
+  isPicking: boolean;
+  togglePicking: () => void;
   handleUndo: (e: React.MouseEvent) => void;
   handleRedo: (e: React.MouseEvent) => void;
-}> = ({ handleUndo, handleRedo }) => {
+}> = ({ isPicking, togglePicking, handleUndo, handleRedo }) => {
   return (
     <div
       style={{
@@ -19,6 +21,9 @@ const BeadToolbar: React.FC<{
         gap: "10px",
       }}
     >
+      <button onClick={togglePicking} style={{ background: isPicking ? "hotpink" : "gray" }}>
+        Picker
+      </button>
       <button onClick={handleUndo}>Undo</button>
       <button onClick={handleRedo}>Redo</button>
     </div>
