@@ -1,49 +1,52 @@
-.app {
+.app-center {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 20px;
+  align-items: stretch;
+  margin: 0 auto;
+  max-width: 1200px;
 }
 
-.workspace {
+.canvas-row {
+  /* border: 2px solid red; */
   display: flex;
+  flex-direction: row;
+}
+
+.canvas-wrapper {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  background-color: rgb(179, 196, 196);
+}
+
+.canvas-svg {
+  width: 800px;
+  height: 500px;
+  display: block;
+  background: #aaa;
+  touch-action: none;
+}
+
+.panel {
+  box-sizing: border-box;
+  background: #d4d492;
+  width: 200px;
+  flex-shrink: 0;
+  padding: 10px;
 }
 
 .toolbar {
-  margin-bottom: 10px;
-}
+  box-sizing: border-box;
+  background: rgb(105, 130, 134);
 
-.toolbar button {
-  margin: 0 5px;
-  padding: 10px 15px;
-  font-size: 16px;
-  cursor: pointer;
-}
+  width: 100%;
+  height: 100px;
 
-.canvas {
-  background-color: #f9f9f9;
-  /* border: 1px solid #ccc; */
-}
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
 
-.sidebar {
-  width: 240px;
-  margin-left: 20px;
-  padding: 15px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  background-color: #fff;
-}
-
-.sidebar h3 {
-  margin-top: 0;
-}
-
-.sidebar label {
-  display: block;
-  margin-bottom: 10px;
-}
-
-.sidebar input {
-  margin-left: 10px;
-  max-width: 100px;
+  padding: 5px;
+  gap: 10px;
 }

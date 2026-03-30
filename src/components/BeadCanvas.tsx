@@ -45,9 +45,13 @@ const BeadCanvas: React.FC<{
   const currentStroke = useRef<PaintChange[]>([]);
   const visitedInStroke = useRef<Set<number>>(new Set());
 
+  const [pickedId, setPickedId] = useState<number | null>(null);
+
   const [viewBox, setViewBox] = useState([0, 0, 800, 500]);
 
   const isPainting = useRef(false);
+
+  const rowAndPos = useRef<{ row: number; pos: number } | null>(null);
 
   function getRowFromI(i: number): number {
     return Math.floor(i / rowLength);
@@ -74,11 +78,7 @@ const BeadCanvas: React.FC<{
       // 👇 venstreklik = paint mode
       if (e.button === 0) {
         if (isPicking) {
-          const picked = colorArr[id];
-          if (!picked) return;
-
-          setWorkingColor(picked);
-          setIsPicking(false);
+          pickColor(id);
           return; // 👈 vigtigt!
         } else {
           isPainting.current = true;
@@ -140,18 +140,7 @@ const BeadCanvas: React.FC<{
       }
 
       if (isDraggingRef.current) {
-        setViewBox(([x, y, w, h]) => {
-          let newX = x - dx;
-          let newY = y - dy;
-
-          const maxX = contentWidth - w;
-          const maxY = contentHeight - h;
-
-          newX = Math.max(0, Math.min(newX, maxX));
-          newY = Math.max(0, Math.min(newY, maxY));
-
-          return [newX, newY, w, h];
-        });
+        panBy(dx, dy);
       }
     }
 
@@ -167,18 +156,7 @@ const BeadCanvas: React.FC<{
 
     // 🖱️ MOUSE PAN
     if (isDraggingRef.current && e.pointerType === "mouse") {
-      setViewBox(([x, y, w, h]) => {
-        let newX = x - dx;
-        let newY = y - dy;
-
-        const maxX = contentWidth - w;
-        const maxY = contentHeight - h;
-
-        newX = Math.max(0, Math.min(newX, maxX));
-        newY = Math.max(0, Math.min(newY, maxY));
-
-        return [newX, newY, w, h];
-      });
+      panBy(dx, dy);
     }
 
     startPos.current = { x: e.clientX, y: e.clientY };
@@ -192,17 +170,15 @@ const BeadCanvas: React.FC<{
       if (isPicking) {
         const picked = colorArr[id];
         if (picked) {
-          setWorkingColor(picked);
-          setIsPicking(false);
+          pickColor(id);
         }
       } else {
         startStroke();
         paintCircle(id);
         endStroke();
       }
-    }
-    // 🖱️ paint afslut
-    if (isPainting.current) {
+    } else if (isPainting.current) {
+      // 🖱️ paint afslut
       endStroke();
     }
 
@@ -267,6 +243,32 @@ const BeadCanvas: React.FC<{
     undoStack.current.push([...currentStroke.current]);
   }
 
+  // funktionalitet fælles for handlePointerDownCircle-mouse-0 og handlePointerUp-not-drag
+  function pickColor(id: number) {
+    const picked = colorArr[id];
+    if (!picked) return;
+
+    setWorkingColor(picked);
+    setIsPicking(false);
+    setPickedId(id); // 🔥 trigger visual cue
+
+    setTimeout(() => setPickedId(null), 200);
+
+    rowAndPos.current = { row: getRowFromI(id), pos: getPosFromI(id) };
+  }
+
+  function panBy(dx: number, dy: number) {
+    setViewBox(([x, y, w, h]) => {
+      let newX = x - dx;
+      let newY = y - dy;
+
+      const maxX = contentWidth - w;
+      const maxY = contentHeight - h;
+
+      return [Math.max(0, Math.min(newX, maxX)), Math.max(0, Math.min(newY, maxY)), w, h];
+    });
+  }
+
   function paintCircle(id: number) {
     if (!workingColor) return;
     if (visitedInStroke.current.has(id)) return;
@@ -295,20 +297,14 @@ const BeadCanvas: React.FC<{
   const myCursor = isDragging ? "grabbing" : isPicking ? "pointer" : "crosshair";
 
   return (
-    <div style={{ position: "relative", width: 800 }}>
+    <div className="canvas-wrapper">
       <svg
-        width={800}
-        height={500}
-        className="canvas"
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerDown={handlePointerDownSvg}
+        className="canvas-svg"
         style={{
           cursor: myCursor,
-          background: "#AAA",
-          touchAction: "none",
-          display: "block",
-          position: "relative",
         }}
         onContextMenu={(e) => e.preventDefault()}
         viewBox={viewBox.join(" ")}
@@ -325,6 +321,17 @@ const BeadCanvas: React.FC<{
               onPointerDown={(e) => handlePointerDownCircle(e, id)}
               onPointerEnter={(e) => handlePointerEnter(e, id)}
             />
+            {pickedId === id && (
+              <circle
+                cx={(getPosFromI(id) * 2 * rad + getStartX(id)).toFixed(2)}
+                cy={(getRowFromI(id) * 2 * sin60(rad) + startY).toFixed(2)}
+                r={(rad * 1.2).toFixed(2)}
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+                opacity="0.9"
+              />
+            )}
           </React.Fragment>
         ))}
       </svg>
@@ -341,13 +348,8 @@ const BeadCanvas: React.FC<{
           pointerEvents: "none",
         }}
       >
-        Hej
+        Hej {rowAndPos.current?.row} {rowAndPos.current?.pos}
       </div>
-      <div
-        onPointerUp={(e) => {
-          e.pointerId;
-        }}
-      ></div>
     </div>
   );
 };

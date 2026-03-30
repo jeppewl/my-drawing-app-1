@@ -10,7 +10,7 @@ const PalettePanel: React.FC<{
       // style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr" }}
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(30px, 1fr))",
+        gridTemplateColumns: "repeat(auto-fit, minmax(35px, 1fr))",
         gap: "2px",
       }}
     >

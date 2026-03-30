@@ -14,7 +14,7 @@ const BeadApp = () => {
 
   const beadColors: ColorData[] = paletteData.colors;
 
-  const [workingColor, setWorkingColor] = useState<ColorData | null>(beadColors[0] ?? null);
+  const [workingColor, setWorkingColor] = useState<ColorData | null>(beadColors[13] ?? null);
   const [isPicking, setIsPicking] = useState(false);
   const togglePicking = () => {
     setIsPicking((prev) => !prev);
@@ -65,51 +65,40 @@ const BeadApp = () => {
     });
   };
 
+  const Panel = ({ children }: React.PropsWithChildren<{}>) => (
+    <div className="panel">{children}</div>
+  );
+
   return (
-    <div className="app">
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
-      >
-        <BeadToolbar
+    <div className="app-center">
+      <BeadToolbar
+        workingColor={workingColor}
+        isPicking={isPicking}
+        togglePicking={togglePicking}
+        handleUndo={handleUndo}
+        handleRedo={handleRedo}
+      />
+      <div className="canvas-row">
+        <BeadCanvas
+          rowLength={rowLength}
+          rows={rows}
+          dotCount={dotCount}
+          colorArr={colorArr}
+          setColorArr={setColorArr}
+          undoStack={undoStack}
+          redoStack={redoStack}
+          workingColor={workingColor}
+          setWorkingColor={setWorkingColor}
           isPicking={isPicking}
-          togglePicking={togglePicking}
-          handleUndo={handleUndo}
-          handleRedo={handleRedo}
+          setIsPicking={setIsPicking}
         />
-        <div style={{ display: "flex", flexDirection: "row" }}>
-          <BeadCanvas
-            rowLength={rowLength}
-            rows={rows}
-            dotCount={dotCount}
-            colorArr={colorArr}
-            setColorArr={setColorArr}
-            undoStack={undoStack}
-            redoStack={redoStack}
+        <Panel>
+          <PalettePanel
+            beadColors={beadColors}
             workingColor={workingColor}
             setWorkingColor={setWorkingColor}
-            isPicking={isPicking}
-            setIsPicking={setIsPicking}
           />
-          <div
-            style={{
-              boxSizing: "border-box",
-              background: "#d4d492",
-              width: "200px",
-              height: "500px",
-              padding: "10px",
-            }}
-          >
-            <PalettePanel
-              beadColors={beadColors}
-              workingColor={workingColor}
-              setWorkingColor={setWorkingColor}
-            />
-          </div>
-        </div>
+        </Panel>
       </div>
     </div>
   );

@@ -1,26 +1,24 @@
 import React from "react";
+import { ColorData } from "../types/colordata";
+import "../styles.css";
 
 const BeadToolbar: React.FC<{
+  workingColor: ColorData | null;
   isPicking: boolean;
   togglePicking: () => void;
   handleUndo: (e: React.MouseEvent) => void;
   handleRedo: (e: React.MouseEvent) => void;
-}> = ({ isPicking, togglePicking, handleUndo, handleRedo }) => {
+}> = ({ workingColor, isPicking, togglePicking, handleUndo, handleRedo }) => {
   return (
-    <div
-      style={{
-        boxSizing: "border-box",
-        background: "rgb(105, 130, 134)",
-        width: "1000px",
-        height: "100px",
-        justifyContent: "center",
-        alignItems: "center",
-        display: "flex",
-        flexDirection: "row",
-        padding: "5px",
-        gap: "10px",
-      }}
-    >
+    <div className="toolbar">
+      <div
+        style={{
+          height: "20px",
+          width: "30px",
+          borderRadius: "5px",
+          background: workingColor?.hexValue,
+        }}
+      ></div>
       <button onClick={togglePicking} style={{ background: isPicking ? "hotpink" : "gray" }}>
         Picker
       </button>
