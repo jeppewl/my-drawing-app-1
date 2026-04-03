@@ -22,8 +22,8 @@ const BeadToolbar: React.FC<{
       <button onClick={togglePicking} style={{ background: isPicking ? "hotpink" : "gray" }}>
         Picker
       </button>
-      <button onClick={handleUndo}>Undo</button>
-      <button onClick={handleRedo}>Redo</button>
+      <button onPointerUp={handleUndo}>Undo</button>
+      <button onPointerUp={handleRedo}>Redo</button>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { mapToHueGradient, sin60 } from "../utils/colorUtils";
 import { PaintChange } from "../types/paintchange";
 import "../styles.css";
@@ -92,7 +92,13 @@ const BeadCanvas: React.FC<{
   const isPointerDown = useRef(false);
   const touchedCircle = useRef<number | null>(null);
   const startPos = useRef<{ x: number; y: number } | null>(null);
-  const beadIds = Array.from({ length: dotCount }, (_, i) => i + 0);
+
+  // const beadIds = Array.from({ length: dotCount }, (_, i) => i + 0);
+  // beadIds bliver nu et dependency for en useEffect
+  const beadIds = useMemo(() => {
+    console.log("useMemo for beadIds");
+    return Array.from({ length: dotCount }, (_, i) => i);
+  }, [dotCount]);
 
   const rad = 28.048;
   const startY = 50;
@@ -110,6 +116,110 @@ const BeadCanvas: React.FC<{
   const isPainting = useRef(false);
 
   const rowAndPos = useRef<{ row: number; pos: number } | null>(null);
+
+  // --- lave hitbox system
+
+  function getCirclesInBox(testBox: TestRect, hitboxes: CircleHitbox[]) {
+    const result = [];
+
+    const testMinX = testBox.left;
+    const testMaxX = testBox.left + testBox.width;
+    const testMinY = testBox.top;
+    const testMaxY = testBox.top + testBox.height;
+
+    for (const c of hitboxes) {
+      // ❌ ingen overlap → skip
+      if (c.maxX < testMinX || c.minX > testMaxX || c.maxY < testMinY || c.minY > testMaxY) {
+        continue;
+      }
+
+      // ✅ overlap → kandidat
+      result.push(c.id);
+    }
+
+    return result;
+  }
+
+  interface TestRect {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  }
+
+  interface CircleHitbox {
+    id: number;
+    cx: number;
+    cy: number;
+    r: number;
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  }
+
+  // const circleHitboxesRef = useRef<CircleHitbox[]>([]);
+
+  // useEffect(() => {
+  //   console.log("useEffect på circleHitboxesRef");
+  // samme som memo
+  //   });
+  // }, [beadIds, rad, startX, startY, rowLength]); // kunne være [] men dette er mere sikkert
+
+  const circleHitboxes = useMemo(() => {
+    console.log("useMemo på circleHitboxes");
+    return beadIds.map((id) => {
+      const cx = getPosFromI(id) * 2 * rad + getStartX(id);
+      const cy = getRowFromI(id) * 2 * sin60(rad) + startY;
+      return {
+        id,
+        cx,
+        cy,
+        r: rad,
+        minX: cx - rad,
+        maxX: cx + rad,
+        minY: cy - rad,
+        maxY: cy + rad,
+      };
+    });
+  }, [beadIds, rad, startX, startY, rowLength]);
+
+  const myTestBox = { top: 85, left: 116, width: 300, height: 100 };
+  const candidates = getCirclesInBox(myTestBox, circleHitboxes);
+
+  type DrawPoint = {
+    x: number;
+    y: number;
+  };
+  const drawPoints = useRef<DrawPoint[]>([]); // opsamle drawpoints til udvikling
+
+  // kan forbinde
+  const pathData = drawPoints.current
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+    .join(" ");
+
+  // der skal laves en ref til koord-korrektion
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  function clientToSvg(clientX: number, clientY: number) {
+    // console.log("clientToSvg kaldes");
+    // console.log(svgRef.current);
+    const svg = svgRef.current;
+    if (!svg) return { x: 0, y: 0 };
+
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+
+    const transformed = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+    console.log(transformed);
+
+    return {
+      x: transformed.x,
+      y: transformed.y,
+    };
+  }
+  // ---
 
   function getRowFromI(i: number): number {
     return Math.floor(i / rowLength);
@@ -137,23 +247,37 @@ const BeadCanvas: React.FC<{
     if (e.pointerType === "touch") {
       if (count === 1) {
         modeRef.current = "draw";
+
+        // samle drawPoints
+        // 👇 første punkt (SVG coords)
+        const { x, y } = clientToSvg(e.clientX, e.clientY);
+
+        drawPoints.current = [{ x, y }];
+        isPainting.current = false;
         // startStroke();
       }
 
       if (count === 2) {
         if (modeRef.current === "draw") endStroke();
         modeRef.current = "pan";
+        isPainting.current = false;
       }
     }
 
     if (e.pointerType === "mouse") {
       if (e.button === 0) {
         modeRef.current = "draw";
+        // 👇 første punkt (SVG coords)
+        const { x, y } = clientToSvg(e.clientX, e.clientY);
+
+        drawPoints.current = [{ x, y }];
+        isPainting.current = false;
         // startStroke();
       }
 
       if (e.button === 2) {
         modeRef.current = "pan";
+        isPainting.current = false;
       }
     }
   };
@@ -178,92 +302,6 @@ const BeadCanvas: React.FC<{
     // ❌ ingen painting her
   };
 
-  // const handlePointerDownCircle = (e: React.PointerEvent<SVGCircleElement>, id: number) => {
-  //   e.stopPropagation(); // 👈 vigtigt!
-  //   //---
-  //   activePointers.current.set(e.pointerId, e);
-  //   e.currentTarget.setPointerCapture(e.pointerId); // bevar
-  //   updateDebugPointers();
-  //   //---
-
-  //   isPointerDown.current = true;
-  //   startPos.current = { x: e.clientX, y: e.clientY };
-
-  //   if (e.pointerType === "mouse") {
-  //     // 👇 venstreklik = paint mode
-  //     if (e.button === 0) {
-  //       if (isPicking) {
-  //         pickColor(id);
-  //         return; // 👈 vigtigt!
-  //       } else {
-  //         isPainting.current = true;
-  //         startStroke();
-  //         paintCircle(id);
-  //       }
-  //     }
-
-  //     // 👇 højreklik = pan mode
-  //     if (e.button === 2) {
-  //       isDraggingRef.current = true;
-  //       setIsDragging(true);
-  //     }
-  //   }
-
-  //   // 📱 TOUCH
-  //   if (e.pointerType === "touch") {
-  //     // start som "maybe tap"
-  //     isDraggingRef.current = false;
-  //     setIsDragging(false);
-  //     touchedCircle.current = id;
-  //   }
-  // };
-
-  // const handlePointerDownSvg = (e: React.PointerEvent<SVGSVGElement>) => {
-  //   //---
-  //   activePointers.current.set(e.pointerId, e);
-  //   e.currentTarget.setPointerCapture(e.pointerId); // bevar
-  //   updateDebugPointers();
-  //   //---
-  //   isPointerDown.current = true;
-  //   startPos.current = { x: e.clientX, y: e.clientY };
-
-  //   const count = activePointers.current.size;
-
-  //   if (e.pointerType === "mouse") {
-  //     if (e.button === 0) {
-  //       modeRef.current = "draw";
-  //       startStroke();
-  //     }
-
-  //     if (e.button === 2) {
-  //       modeRef.current = "pan";
-  //     }
-  //   }
-
-  //   if (e.pointerType === "touch") {
-  //     if (count === 1) {
-  //       modeRef.current = "draw";
-  //       startStroke();
-  //     }
-
-  //     if (count === 2) {
-  //       modeRef.current = "pan";
-  //     }
-  //   }
-
-  //   // // 🖱️ højreklik → pan
-  //   // if (e.pointerType === "mouse" && e.button === 2) {
-  //   //   isDraggingRef.current = true;
-  //   //   setIsDragging(true);
-  //   // }
-
-  //   // // 📱 touch → mulig pan
-  //   // if (e.pointerType === "touch") {
-  //   //   isDraggingRef.current = false;
-  //   //   setIsDragging(false);
-  //   // }
-  // };
-
   const DRAG_THRESHOLD = 5;
 
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -272,10 +310,6 @@ const BeadCanvas: React.FC<{
     activePointers.current.set(e.pointerId, e);
     updateDebugPointers();
     //---
-    // if (!startPos.current) return;
-
-    // const dx = e.clientX - startPos.current.x;
-    // const dy = e.clientY - startPos.current.y;
 
     // 🆕 brug mode
     const mode = modeRef.current;
@@ -303,6 +337,16 @@ const BeadCanvas: React.FC<{
     // ✏️ DRAW
     if (mode === "draw") {
       const p = [...activePointers.current.values()][0];
+
+      // 👉 gem punkt
+      // drawPoints.current.push({
+      //   x: p.clientX,
+      //   y: p.clientY,
+      // });
+
+      const { x, y } = clientToSvg(p.clientX, p.clientY);
+
+      drawPoints.current.push({ x, y });
 
       const el = document.elementFromPoint(p.clientX, p.clientY);
 
@@ -332,44 +376,7 @@ const BeadCanvas: React.FC<{
       }
 
       lastPanPos.current = { x: midX, y: midY };
-      // // midlertidigt: genbrug din gamle dx/dy
-      // if (!startPos.current) return;
-      // const dx = e.clientX - startPos.current.x;
-      // const dy = e.clientY - startPos.current.y;
-      // panBy(dx, dy);
-      // startPos.current = { x: e.clientX, y: e.clientY };
     }
-
-    // 📱 TOUCH → detect drag = pan
-    // if (e.pointerType === "touch") {
-    //   const distSq = dx * dx + dy * dy;
-
-    //   if (!isDraggingRef.current && distSq > DRAG_THRESHOLD * DRAG_THRESHOLD) {
-    //     isDraggingRef.current = true;
-    //     setIsDragging(true);
-
-    //     touchedCircle.current = null; // ❌ det var ikke et tap
-    //   }
-
-    //   if (isDraggingRef.current) {
-    //     panBy(dx, dy);
-    //   }
-    // }
-
-    // 🖱️ MOUSE PAINT
-    // if (isPainting.current) {
-    //   const el = document.elementFromPoint(e.clientX, e.clientY);
-
-    //   if (el?.tagName === "circle") {
-    //     const id = Number(el.getAttribute("data-id"));
-    //     if (!isNaN(id)) paintCircle(id);
-    //   }
-    // }
-
-    // 🖱️ MOUSE PAN
-    // if (isDraggingRef.current && e.pointerType === "mouse") {
-    //   panBy(dx, dy);
-    // }
 
     startPos.current = { x: e.clientX, y: e.clientY };
   };
@@ -400,48 +407,23 @@ const BeadCanvas: React.FC<{
 
     modeRef.current = "idle";
     startPos.current = null;
-
-    // // 📱 TAP → pick eller paint
-    // if (!isDraggingRef.current && touchedCircle.current !== null) {
-    //   const id = touchedCircle.current;
-
-    //   if (isPicking) {
-    //     const picked = colorArr[id];
-    //     if (picked) {
-    //       pickColor(id);
-    //     }
-    //   } else {
-    //     startStroke();
-    //     paintCircle(id);
-    //     endStroke();
-    //   }
-    // } else if (isPainting.current) {
-    //   // 🖱️ paint afslut
-    //   endStroke();
-    // }
-
-    // isPainting.current = false;
-    // isDraggingRef.current = false;
-    // setIsDragging(false);
-    // isPointerDown.current = false;
-    // touchedCircle.current = null;
-    // startPos.current = null;
-
-    // e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
-  const handlePointerEnter = (e: React.PointerEvent<SVGCircleElement>, id: number) => {
-    if (e.pointerType === "mouse" && isPointerDown.current && !isDraggingRef.current) {
-      console.log("handlePointerEnter");
-      // start stroke hvis vi ikke allerede painter
-      if (!isPainting.current) {
-        startStroke();
-        isPainting.current = true;
-      }
+  // const handlePointerEnter = (e: React.PointerEvent<SVGCircleElement>, id: number) => {
+  //   if (e.pointerType === "mouse" && isPointerDown.current) {
+  //     // 👇 kun paint hvis vi allerede er i gang
+  //     if (isPainting.current) {
+  //       paintCircle(id);
+  //     }
+  //   }
+  // };
 
-      paintCircle(id);
-    }
-  };
+  // const handlePointerEnter = (e: React.PointerEvent<SVGCircleElement>, id: number) => {
+  //   if (isPainting.current) {
+  //     console.log("enter-based paint:", id);
+  //     paintCircle(id);
+  //   }
+  // };
 
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault();
@@ -470,15 +452,18 @@ const BeadCanvas: React.FC<{
   };
 
   function startStroke() {
+    // drawPoints.current = []; // TODO kun til udvikling
     currentStroke.current = [];
     visitedInStroke.current.clear();
-    redoStack.current = [];
+    // redoStack.current = [];
   }
 
   function endStroke() {
     if (currentStroke.current.length === 0) return;
 
     undoStack.current.push([...currentStroke.current]);
+
+    redoStack.current = []; // ✅ her i stedet
   }
 
   // funktionalitet fælles for handlePointerDownCircle-mouse-0 og handlePointerUp-not-drag
@@ -537,6 +522,7 @@ const BeadCanvas: React.FC<{
   return (
     <div className="canvas-wrapper">
       <svg
+        ref={svgRef}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerDown={handlePointerDownSvg}
@@ -557,7 +543,7 @@ const BeadCanvas: React.FC<{
               r={rad.toFixed(2)}
               fill={colorArr[id].hexValue}
               onPointerDown={(e) => handlePointerDownCircle(e, id)}
-              onPointerEnter={(e) => handlePointerEnter(e, id)}
+              // onPointerEnter={(e) => handlePointerEnter(e, id)}
             />
             {pickedId === id && (
               <circle
@@ -572,6 +558,29 @@ const BeadCanvas: React.FC<{
             )}
           </React.Fragment>
         ))}
+        {candidates.map((id) => (
+          <rect
+            key={id}
+            x={circleHitboxes[id].minX}
+            y={circleHitboxes[id].minY}
+            width={circleHitboxes[id].r * 2}
+            height={circleHitboxes[id].r * 2}
+            fill="#2188fd39"
+            pointerEvents="none" // 👈 KEY
+          />
+        ))}
+        <rect
+          x={myTestBox.left}
+          y={myTestBox.top}
+          width={myTestBox.width}
+          height={myTestBox.height}
+          fill="#fa2c2c3e"
+          pointerEvents="none"
+        />
+        {drawPoints.current.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r={2} fill="red" pointerEvents="none" />
+        ))}
+        <path d={pathData} fill="none" stroke="#ff55e384" strokeWidth={2} pointerEvents="none" />
       </svg>
       <div className="debug-layer">
         {debugPointers.map((p) => (
