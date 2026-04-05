@@ -3,6 +3,7 @@ import { mapToHueGradient, sin60 } from "../utils/colorUtils";
 import { PaintChange } from "../types/paintchange";
 import "../styles.css";
 import { ColorData } from "../types/colordata";
+import { CircleHitbox, DebugPointer, DrawPoint, MoveStep, TestRect } from "../types/draw-related";
 
 const BeadCanvas: React.FC<{
   rowLength: number;
@@ -29,12 +30,6 @@ const BeadCanvas: React.FC<{
   isPicking,
   setIsPicking,
 }) => {
-  interface DebugPointer {
-    x: number;
-    y: number;
-    id: number;
-  }
-
   // sæt state med type
   const [debugPointers, setDebugPointers] = useState<DebugPointer[]>([]);
   const activePointers = useRef(new Map());
@@ -49,44 +44,7 @@ const BeadCanvas: React.FC<{
   // -------
   const modeRef = useRef<"idle" | "draw" | "pan">("idle");
 
-  const resolveMode = (e?: PointerEvent) => {
-    const count = activePointers.current.size;
-
-    // 🖱️ MOUSE
-    if (e?.pointerType === "mouse") {
-      if (e.buttons === 2) return "pan"; // højreklik
-      if (e.buttons === 1) return "draw"; // venstreklik
-    }
-
-    // 📱 TOUCH
-    if (count === 1) return "draw";
-    if (count === 2) return "pan";
-
-    return "idle";
-  };
-
-  const updateMode = () => {
-    const nextMode = resolveMode();
-    const prevMode = modeRef.current;
-
-    if (nextMode === prevMode) return;
-
-    // cleanup gammel mode
-    if (prevMode === "draw") endStroke();
-    if (prevMode === "pan") endPan?.();
-
-    // start ny mode
-    if (nextMode === "draw") startStroke();
-    if (nextMode === "pan") startPan?.();
-
-    modeRef.current = nextMode;
-  };
-  // ---
-  const pointers = [...activePointers.current.values()];
-  const midX = pointers.reduce((sum, p) => sum + p.clientX, 0) / pointers.length;
-  const midY = pointers.reduce((sum, p) => sum + p.clientY, 0) / pointers.length;
   const lastPanPos = useRef<{ x: number; y: number } | null>(null);
-  // ---
   const isDraggingRef = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
   const isPointerDown = useRef(false);
@@ -117,55 +75,6 @@ const BeadCanvas: React.FC<{
 
   const rowAndPos = useRef<{ row: number; pos: number } | null>(null);
 
-  // --- lave hitbox system
-
-  function getCirclesInBox(testBox: TestRect, hitboxes: CircleHitbox[]) {
-    const result = [];
-
-    const testMinX = testBox.left;
-    const testMaxX = testBox.left + testBox.width;
-    const testMinY = testBox.top;
-    const testMaxY = testBox.top + testBox.height;
-
-    for (const c of hitboxes) {
-      // ❌ ingen overlap → skip
-      if (c.maxX < testMinX || c.minX > testMaxX || c.maxY < testMinY || c.minY > testMaxY) {
-        continue;
-      }
-
-      // ✅ overlap → kandidat
-      result.push(c.id);
-    }
-
-    return result;
-  }
-
-  interface TestRect {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  }
-
-  interface CircleHitbox {
-    id: number;
-    cx: number;
-    cy: number;
-    r: number;
-    minX: number;
-    maxX: number;
-    minY: number;
-    maxY: number;
-  }
-
-  // const circleHitboxesRef = useRef<CircleHitbox[]>([]);
-
-  // useEffect(() => {
-  //   console.log("useEffect på circleHitboxesRef");
-  // samme som memo
-  //   });
-  // }, [beadIds, rad, startX, startY, rowLength]); // kunne være [] men dette er mere sikkert
-
   const circleHitboxes = useMemo(() => {
     console.log("useMemo på circleHitboxes");
     return beadIds.map((id) => {
@@ -184,13 +93,13 @@ const BeadCanvas: React.FC<{
     });
   }, [beadIds, rad, startX, startY, rowLength]);
 
-  const myTestBox = { top: 85, left: 116, width: 300, height: 100 };
-  const candidates = getCirclesInBox(myTestBox, circleHitboxes);
+  const latestMoveStepRef = useRef<MoveStep | null>(null);
 
-  type DrawPoint = {
-    x: number;
-    y: number;
-  };
+  const step = latestMoveStepRef.current;
+
+  const myTestBox = step ? rectFromSegment(step) : null;
+  const candidates = step ? getCirclesInBox(rectFromSegment(step), circleHitboxes) : [];
+
   const drawPoints = useRef<DrawPoint[]>([]); // opsamle drawpoints til udvikling
 
   // kan forbinde
@@ -200,40 +109,6 @@ const BeadCanvas: React.FC<{
 
   // der skal laves en ref til koord-korrektion
   const svgRef = useRef<SVGSVGElement | null>(null);
-
-  function clientToSvg(clientX: number, clientY: number) {
-    // console.log("clientToSvg kaldes");
-    // console.log(svgRef.current);
-    const svg = svgRef.current;
-    if (!svg) return { x: 0, y: 0 };
-
-    const pt = svg.createSVGPoint();
-    pt.x = clientX;
-    pt.y = clientY;
-
-    const transformed = pt.matrixTransform(svg.getScreenCTM()?.inverse());
-    console.log(transformed);
-
-    return {
-      x: transformed.x,
-      y: transformed.y,
-    };
-  }
-  // ---
-
-  function getRowFromI(i: number): number {
-    return Math.floor(i / rowLength);
-  }
-
-  function getPosFromI(i: number): number {
-    return i % rowLength;
-  }
-
-  function getStartX(i: number): number {
-    return getRowFromI(i) % 2 === 0 ? startX : startX + rad;
-  }
-
-  function getStartY(i: number) {}
 
   const handlePointerDownCommon = (e: React.PointerEvent) => {
     activePointers.current.set(e.pointerId, e);
@@ -302,8 +177,6 @@ const BeadCanvas: React.FC<{
     // ❌ ingen painting her
   };
 
-  const DRAG_THRESHOLD = 5;
-
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     if (!activePointers.current.has(e.pointerId)) return;
 
@@ -348,6 +221,47 @@ const BeadCanvas: React.FC<{
 
       drawPoints.current.push({ x, y });
 
+      //--- movestep logik
+      if (drawPoints.current.length >= 2) {
+        const n = drawPoints.current.length;
+        const p1 = drawPoints.current[n - 2];
+        const p2 = drawPoints.current[n - 1];
+
+        latestMoveStepRef.current = {
+          p1x: p1.x,
+          p1y: p1.y,
+          p2x: p2.x,
+          p2y: p2.y,
+        };
+      }
+
+      // --- sted at indsætte collision logik
+      const step = latestMoveStepRef.current;
+
+      if (step) {
+        const candidates = getCirclesInBox(rectFromSegment(step), circleHitboxes);
+
+        const hits: number[] = [];
+
+        candidates.forEach((id) => {
+          const circle = circleHitboxes[id];
+
+          if (segmentIntersectsCircle(step, circle)) {
+            hits.push(id);
+          }
+        });
+
+        if (hits.length > 0) {
+          if (!isPainting.current) {
+            startStroke();
+            isPainting.current = true;
+          }
+
+          hits.forEach(paintCircle);
+        }
+      }
+
+      // ---
       const el = document.elementFromPoint(p.clientX, p.clientY);
 
       if (el?.tagName === "circle") {
@@ -409,22 +323,6 @@ const BeadCanvas: React.FC<{
     startPos.current = null;
   };
 
-  // const handlePointerEnter = (e: React.PointerEvent<SVGCircleElement>, id: number) => {
-  //   if (e.pointerType === "mouse" && isPointerDown.current) {
-  //     // 👇 kun paint hvis vi allerede er i gang
-  //     if (isPainting.current) {
-  //       paintCircle(id);
-  //     }
-  //   }
-  // };
-
-  // const handlePointerEnter = (e: React.PointerEvent<SVGCircleElement>, id: number) => {
-  //   if (isPainting.current) {
-  //     console.log("enter-based paint:", id);
-  //     paintCircle(id);
-  //   }
-  // };
-
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault();
 
@@ -465,6 +363,106 @@ const BeadCanvas: React.FC<{
 
     redoStack.current = []; // ✅ her i stedet
   }
+
+  function clientToSvg(clientX: number, clientY: number) {
+    // console.log("clientToSvg kaldes");
+    // console.log(svgRef.current);
+    const svg = svgRef.current;
+    if (!svg) return { x: 0, y: 0 };
+
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+
+    const transformed = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+    console.log(transformed);
+
+    return {
+      x: transformed.x,
+      y: transformed.y,
+    };
+  }
+
+  function getCirclesInBox(testBox: TestRect, hitboxes: CircleHitbox[]) {
+    const result = [];
+
+    const testMinX = testBox.left;
+    const testMaxX = testBox.left + testBox.width;
+    const testMinY = testBox.top;
+    const testMaxY = testBox.top + testBox.height;
+
+    for (const c of hitboxes) {
+      // ❌ ingen overlap → skip
+      if (c.maxX < testMinX || c.minX > testMaxX || c.maxY < testMinY || c.minY > testMaxY) {
+        continue;
+      }
+
+      // ✅ overlap → kandidat
+      result.push(c.id);
+    }
+
+    return result;
+  }
+
+  function rectFromSegment(step: MoveStep): TestRect {
+    const minX = Math.min(step.p1x, step.p2x);
+    const maxX = Math.max(step.p1x, step.p2x);
+    const minY = Math.min(step.p1y, step.p2y);
+    const maxY = Math.max(step.p1y, step.p2y);
+
+    return {
+      left: minX,
+      top: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+  }
+
+  // funktion til hit detection af candidates
+  function segmentIntersectsCircle(moveStep: MoveStep, circle: CircleHitbox) {
+    const { p1x, p1y, p2x, p2y } = moveStep;
+    const { cx, cy, r } = circle;
+
+    const dx = p2x - p1x;
+    const dy = p2y - p1y;
+
+    const lengthSquared = dx * dx + dy * dy;
+
+    // Hvis segmentet er et punkt
+    if (lengthSquared === 0) {
+      const distSq = (cx - p1x) ** 2 + (cy - p1y) ** 2;
+      return distSq <= r * r;
+    }
+
+    // Projektion (t mellem 0 og 1)
+    let t = ((cx - p1x) * dx + (cy - p1y) * dy) / lengthSquared;
+
+    // Clamp til segment
+    t = Math.max(0, Math.min(1, t));
+
+    // Nærmeste punkt på segmentet
+    const closestX = p1x + t * dx;
+    const closestY = p1y + t * dy;
+
+    // Afstand til cirkel center
+    const distSq = (cx - closestX) ** 2 + (cy - closestY) ** 2;
+
+    return distSq <= r * r;
+  }
+
+  function getRowFromI(i: number): number {
+    return Math.floor(i / rowLength);
+  }
+
+  function getPosFromI(i: number): number {
+    return i % rowLength;
+  }
+
+  function getStartX(i: number): number {
+    return getRowFromI(i) % 2 === 0 ? startX : startX + rad;
+  }
+
+  function getStartY(i: number) {}
 
   // funktionalitet fælles for handlePointerDownCircle-mouse-0 og handlePointerUp-not-drag
   function pickColor(id: number) {
@@ -569,14 +567,16 @@ const BeadCanvas: React.FC<{
             pointerEvents="none" // 👈 KEY
           />
         ))}
-        <rect
-          x={myTestBox.left}
-          y={myTestBox.top}
-          width={myTestBox.width}
-          height={myTestBox.height}
-          fill="#fa2c2c3e"
-          pointerEvents="none"
-        />
+        {myTestBox && (
+          <rect
+            x={myTestBox.left}
+            y={myTestBox.top}
+            width={myTestBox.width}
+            height={myTestBox.height}
+            fill="#fa2c2c3e"
+            pointerEvents="none"
+          />
+        )}
         {drawPoints.current.map((p, i) => (
           <circle key={i} cx={p.x} cy={p.y} r={2} fill="red" pointerEvents="none" />
         ))}
