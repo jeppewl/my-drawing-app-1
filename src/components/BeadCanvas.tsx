@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { mapToHueGradient, sin60 } from "../utils/colorUtils";
+import React, { useMemo, useRef, useState } from "react";
+import { sin60 } from "../utils/colorUtils";
 import { PaintChange } from "../types/paintchange";
 import "../styles.css";
 import { ColorData } from "../types/colordata";
 import { CircleHitbox, DebugPointer, DrawPoint, MoveStep, TestRect } from "../types/draw-related";
+import { Mode } from "../types/mode";
 
 const BeadCanvas: React.FC<{
   rowLength: number;
@@ -15,8 +16,9 @@ const BeadCanvas: React.FC<{
   redoStack: React.RefObject<PaintChange[][]>;
   workingColor: ColorData | null;
   setWorkingColor: React.Dispatch<React.SetStateAction<ColorData | null>>;
-  isPicking: boolean;
-  setIsPicking: React.Dispatch<React.SetStateAction<boolean>>;
+  mode: Mode;
+  modeRef: React.RefObject<Mode>;
+  setModeSafe: (m: Mode) => void;
 }> = ({
   rowLength,
   rows,
@@ -27,10 +29,10 @@ const BeadCanvas: React.FC<{
   redoStack,
   workingColor,
   setWorkingColor,
-  isPicking,
-  setIsPicking,
+  mode,
+  modeRef,
+  setModeSafe,
 }) => {
-  // sæt state med type
   const [debugPointers, setDebugPointers] = useState<DebugPointer[]>([]);
   const activePointers = useRef(new Map());
   const updateDebugPointers = () => {
@@ -41,18 +43,11 @@ const BeadCanvas: React.FC<{
     }));
     setDebugPointers(arr);
   };
-  // -------
-  const modeRef = useRef<"idle" | "draw" | "pan">("idle");
 
   const lastPanPos = useRef<{ x: number; y: number } | null>(null);
-  const isDraggingRef = useRef(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const isPointerDown = useRef(false);
   const touchedCircle = useRef<number | null>(null);
   const startPos = useRef<{ x: number; y: number } | null>(null);
 
-  // const beadIds = Array.from({ length: dotCount }, (_, i) => i + 0);
-  // beadIds bliver nu et dependency for en useEffect
   const beadIds = useMemo(() => {
     console.log("useMemo for beadIds");
     return Array.from({ length: dotCount }, (_, i) => i);
@@ -112,7 +107,6 @@ const BeadCanvas: React.FC<{
 
   const handlePointerDownCommon = (e: React.PointerEvent) => {
     activePointers.current.set(e.pointerId, e);
-    // e.currentTarget.setPointerCapture(e.pointerId);
     (e.target as Element).closest("svg")?.setPointerCapture(e.pointerId);
 
     startPos.current = { x: e.clientX, y: e.clientY };
@@ -120,38 +114,32 @@ const BeadCanvas: React.FC<{
     const count = activePointers.current.size;
 
     if (e.pointerType === "touch") {
-      if (count === 1) {
-        modeRef.current = "draw";
-
-        // samle drawPoints
-        // 👇 første punkt (SVG coords)
+      if (count === 1 && modeRef.current !== "pick") {
+        setModeSafe("draw"); // brug setModeSafe for UI + ref
         const { x, y } = clientToSvg(e.clientX, e.clientY);
-
         drawPoints.current = [{ x, y }];
         isPainting.current = false;
-        // startStroke();
       }
 
       if (count === 2) {
         if (modeRef.current === "draw") endStroke();
-        modeRef.current = "pan";
+        setModeSafe("pan");
         isPainting.current = false;
       }
     }
 
     if (e.pointerType === "mouse") {
-      if (e.button === 0) {
-        modeRef.current = "draw";
+      if (e.button === 0 && modeRef.current !== "pick") {
+        setModeSafe("draw");
         // 👇 første punkt (SVG coords)
         const { x, y } = clientToSvg(e.clientX, e.clientY);
 
         drawPoints.current = [{ x, y }];
         isPainting.current = false;
-        // startStroke();
       }
 
       if (e.button === 2) {
-        modeRef.current = "pan";
+        setModeSafe("pan");
         isPainting.current = false;
       }
     }
@@ -164,17 +152,14 @@ const BeadCanvas: React.FC<{
   const handlePointerDownCircle = (e: React.PointerEvent<SVGCircleElement>, id: number) => {
     handlePointerDownCommon(e);
 
+    // 👇 NYT: pick mode
+    if (modeRef.current === "pick") {
+      pickColor(id);
+      return;
+    }
+
     // 🆕 kun registrér til evt. tap
-    if (e.pointerType === "touch") {
-      touchedCircle.current = id;
-    }
-
-    // faktisk skal vi slet ikke tjekke for pointerType
-    if (e.pointerType === "mouse") {
-      touchedCircle.current = id;
-    }
-
-    // ❌ ingen painting her
+    touchedCircle.current = id;
   };
 
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -182,7 +167,6 @@ const BeadCanvas: React.FC<{
 
     activePointers.current.set(e.pointerId, e);
     updateDebugPointers();
-    //---
 
     // 🆕 brug mode
     const mode = modeRef.current;
@@ -197,7 +181,7 @@ const BeadCanvas: React.FC<{
         }
       } else if (e.buttons === 2) {
         // højreklik holdt nede
-        modeRef.current = "pan";
+        setModeSafe("pan");
       } else {
         // ingen knapper → idle
         if (modeRef.current === "draw") {
@@ -210,12 +194,6 @@ const BeadCanvas: React.FC<{
     // ✏️ DRAW
     if (mode === "draw") {
       const p = [...activePointers.current.values()][0];
-
-      // 👉 gem punkt
-      // drawPoints.current.push({
-      //   x: p.clientX,
-      //   y: p.clientY,
-      // });
 
       const { x, y } = clientToSvg(p.clientX, p.clientY);
 
@@ -251,7 +229,14 @@ const BeadCanvas: React.FC<{
           }
         });
 
-        if (hits.length > 0) {
+        if (hits.length === 0) return; // nu skal vi muligvis picke
+
+        // 👇 MODE SWITCH
+        if (modeRef.current === "pick") {
+          return; // 👈 gør ingenting i move
+        }
+
+        if (modeRef.current === "draw") {
           if (!isPainting.current) {
             startStroke();
             isPainting.current = true;
@@ -261,7 +246,6 @@ const BeadCanvas: React.FC<{
         }
       }
 
-      // ---
       const el = document.elementFromPoint(p.clientX, p.clientY);
 
       if (el?.tagName === "circle") {
@@ -298,7 +282,6 @@ const BeadCanvas: React.FC<{
   const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
     activePointers.current.delete(e.pointerId);
     updateDebugPointers();
-    //----
 
     // 🆕 TAP fallback (meget vigtig)
     if (modeRef.current === "draw") {
@@ -318,8 +301,7 @@ const BeadCanvas: React.FC<{
     if (modeRef.current === "pan") {
       lastPanPos.current = null;
     }
-
-    modeRef.current = "idle";
+    setModeSafe("idle"); // 👈 opdater både ref + state
     startPos.current = null;
   };
 
@@ -350,10 +332,8 @@ const BeadCanvas: React.FC<{
   };
 
   function startStroke() {
-    // drawPoints.current = []; // TODO kun til udvikling
     currentStroke.current = [];
     visitedInStroke.current.clear();
-    // redoStack.current = [];
   }
 
   function endStroke() {
@@ -365,8 +345,6 @@ const BeadCanvas: React.FC<{
   }
 
   function clientToSvg(clientX: number, clientY: number) {
-    // console.log("clientToSvg kaldes");
-    // console.log(svgRef.current);
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
 
@@ -375,7 +353,6 @@ const BeadCanvas: React.FC<{
     pt.y = clientY;
 
     const transformed = pt.matrixTransform(svg.getScreenCTM()?.inverse());
-    console.log(transformed);
 
     return {
       x: transformed.x,
@@ -464,18 +441,22 @@ const BeadCanvas: React.FC<{
 
   function getStartY(i: number) {}
 
-  // funktionalitet fælles for handlePointerDownCircle-mouse-0 og handlePointerUp-not-drag
   function pickColor(id: number) {
+    console.log("kalder pickColor, id:", id);
     const picked = colorArr[id];
     if (!picked) return;
 
     setWorkingColor(picked);
-    setIsPicking(false);
-    setPickedId(id); // 🔥 trigger visual cue
+    setPickedId(id);
+
+    setModeSafe("idle"); // 👈 BRUG DENNE (ikke modeRef)
 
     setTimeout(() => setPickedId(null), 200);
 
-    rowAndPos.current = { row: getRowFromI(id), pos: getPosFromI(id) };
+    rowAndPos.current = {
+      row: getRowFromI(id),
+      pos: getPosFromI(id),
+    };
   }
 
   function panBy(dx: number, dy: number) {
@@ -515,7 +496,7 @@ const BeadCanvas: React.FC<{
     });
   }
 
-  const myCursor = isDragging ? "grabbing" : isPicking ? "pointer" : "crosshair";
+  const myCursor = mode === "pan" ? "grabbing" : mode === "pick" ? "pointer" : "crosshair";
 
   return (
     <div className="canvas-wrapper">
@@ -541,7 +522,6 @@ const BeadCanvas: React.FC<{
               r={rad.toFixed(2)}
               fill={colorArr[id].hexValue}
               onPointerDown={(e) => handlePointerDownCircle(e, id)}
-              // onPointerEnter={(e) => handlePointerEnter(e, id)}
             />
             {pickedId === id && (
               <circle

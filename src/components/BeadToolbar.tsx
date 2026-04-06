@@ -1,14 +1,15 @@
 import React from "react";
 import { ColorData } from "../types/colordata";
 import "../styles.css";
+import { Mode } from "../types/mode";
 
 const BeadToolbar: React.FC<{
   workingColor: ColorData | null;
-  isPicking: boolean;
-  togglePicking: () => void;
   handleUndo: (e: React.MouseEvent) => void;
   handleRedo: (e: React.MouseEvent) => void;
-}> = ({ workingColor, isPicking, togglePicking, handleUndo, handleRedo }) => {
+  mode: Mode;
+  setModeSafe: (m: Mode) => void;
+}> = ({ workingColor, handleUndo, handleRedo, mode, setModeSafe }) => {
   return (
     <div className="toolbar">
       <div
@@ -19,7 +20,10 @@ const BeadToolbar: React.FC<{
           background: workingColor?.hexValue,
         }}
       ></div>
-      <button onClick={togglePicking} style={{ background: isPicking ? "hotpink" : "gray" }}>
+      <button
+        onClick={() => setModeSafe(mode === "pick" ? "idle" : "pick")}
+        style={{ background: mode === "pick" ? "hotpink" : "gray" }}
+      >
         Picker
       </button>
       <button onPointerUp={handleUndo}>Undo</button>

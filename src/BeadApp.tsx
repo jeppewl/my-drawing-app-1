@@ -6,6 +6,7 @@ import BeadToolbar from "./components/BeadToolbar";
 import PalettePanel from "./components/PalettePanel";
 import { ColorData } from "./types/colordata";
 import paletteData from "./data/palette-hama-IMG_3973.json";
+import { Mode } from "./types/mode";
 
 const BeadApp = () => {
   const rowLength = 18;
@@ -15,9 +16,13 @@ const BeadApp = () => {
   const beadColors: ColorData[] = paletteData.colors;
 
   const [workingColor, setWorkingColor] = useState<ColorData | null>(beadColors[13] ?? null);
-  const [isPicking, setIsPicking] = useState(false);
-  const togglePicking = () => {
-    setIsPicking((prev) => !prev);
+
+  const [mode, setMode] = useState<Mode>("idle");
+  const modeRef = useRef(mode);
+
+  const setModeSafe = (m: Mode) => {
+    modeRef.current = m;
+    setMode(m);
   };
 
   const [colorArr, setColorArr] = useState<ColorData[]>(() => {
@@ -73,10 +78,10 @@ const BeadApp = () => {
     <div className="app-center">
       <BeadToolbar
         workingColor={workingColor}
-        isPicking={isPicking}
-        togglePicking={togglePicking}
         handleUndo={handleUndo}
         handleRedo={handleRedo}
+        mode={mode}
+        setModeSafe={setModeSafe}
       />
       <div className="canvas-row">
         <BeadCanvas
@@ -89,8 +94,9 @@ const BeadApp = () => {
           redoStack={redoStack}
           workingColor={workingColor}
           setWorkingColor={setWorkingColor}
-          isPicking={isPicking}
-          setIsPicking={setIsPicking}
+          mode={mode}
+          modeRef={modeRef}
+          setModeSafe={setModeSafe}
         />
         <Panel>
           <PalettePanel
