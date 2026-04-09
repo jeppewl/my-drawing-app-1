@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { sin60 } from "../utils/colorUtils";
 import { PaintChange } from "../types/paintchange";
 import "../styles.css";
@@ -59,12 +59,16 @@ const BeadCanvas: React.FC<{
 
   const contentWidth = rowLength * 2 * rad + 100;
   const contentHeight = rows * 2 * sin60(rad) + 100;
+
+  const MIN_W = 100;
+  const MIN_H = 100;
+
   const currentStroke = useRef<PaintChange[]>([]);
   const visitedInStroke = useRef<Set<number>>(new Set());
 
   const [pickedId, setPickedId] = useState<number | null>(null);
 
-  const [viewBox, setViewBox] = useState([0, 0, 800, 500]);
+  const [viewBox, setViewBox] = useState<[number, number, number, number]>([0, 0, 800, 500]);
 
   const isPainting = useRef(false);
 
@@ -89,8 +93,7 @@ const BeadCanvas: React.FC<{
   }, [beadIds, rad, startX, startY, rowLength]);
 
   const latestMoveStepRef = useRef<MoveStep | null>(null);
-
-  const step = latestMoveStepRef.current;
+  const step = latestMoveStepRef.current; // ikke forveksle med lokal step i move-handling
 
   const myTestBox = step ? rectFromSegment(step) : null;
   const candidates = step ? getCirclesInBox(rectFromSegment(step), circleHitboxes) : [];
@@ -104,6 +107,18 @@ const BeadCanvas: React.FC<{
 
   // der skal laves en ref til koord-korrektion
   const svgRef = useRef<SVGSVGElement | null>(null);
+
+  // til korrekt panning
+  const panStart = useRef<{
+    startSvg: { x: number; y: number };
+    startViewBox: [number, number, number, number];
+  } | null>(null);
+  // og
+  const viewBoxRef = useRef<[number, number, number, number]>(viewBox);
+
+  useEffect(() => {
+    viewBoxRef.current = viewBox;
+  }, [viewBox]);
 
   const handlePointerDownCommon = (e: React.PointerEvent) => {
     activePointers.current.set(e.pointerId, e);
@@ -141,6 +156,16 @@ const BeadCanvas: React.FC<{
       if (e.button === 2) {
         setModeSafe("pan");
         isPainting.current = false;
+
+        const pointers = [...activePointers.current.values()];
+
+        const midX = pointers.reduce((sum, p) => sum + p.clientX, 0) / pointers.length;
+        const midY = pointers.reduce((sum, p) => sum + p.clientY, 0) / pointers.length;
+
+        panStart.current = {
+          startSvg: clientToSvg(midX, midY),
+          startViewBox: viewBoxRef.current,
+        };
       }
     }
   };
@@ -259,24 +284,25 @@ const BeadCanvas: React.FC<{
       }
     }
 
-    // ✋ PAN
-    if (mode === "pan") {
+    if (mode === "pan" && panStart.current) {
       const pointers = [...activePointers.current.values()];
 
       const midX = pointers.reduce((sum, p) => sum + p.clientX, 0) / pointers.length;
       const midY = pointers.reduce((sum, p) => sum + p.clientY, 0) / pointers.length;
 
-      if (lastPanPos.current) {
-        const dx = midX - lastPanPos.current.x;
-        const dy = midY - lastPanPos.current.y;
+      const currentSvg = clientToSvgWithViewBox(
+        midX,
+        midY,
+        panStart.current.startViewBox, // 🔥 vigtig
+      );
 
-        panBy(dx, dy);
-      }
+      const dx = currentSvg.x - panStart.current.startSvg.x;
+      const dy = currentSvg.y - panStart.current.startSvg.y;
 
-      lastPanPos.current = { x: midX, y: midY };
+      const [startX, startY, w, h] = panStart.current.startViewBox;
+
+      setViewBox(clampViewBox(startX - dx, startY - dy, w, h));
     }
-
-    startPos.current = { x: e.clientX, y: e.clientY };
   };
 
   const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -308,27 +334,15 @@ const BeadCanvas: React.FC<{
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault();
 
-    const panSpeed = 1;
+    //debug
+    // console.log(e.deltaX, e.deltaY);
 
-    setViewBox(([x, y, w, h]) => {
-      let newX = x;
-      let newY = y;
+    const zoomFactor = 1.05;
+    const scale = e.deltaY < 0 ? 1 / zoomFactor : zoomFactor;
 
-      if (e.shiftKey) {
-        newX = x + e.deltaY * panSpeed;
-      } else {
-        newY = y + e.deltaY * panSpeed;
-      }
+    const { x, y } = clientToSvg(e.clientX, e.clientY);
 
-      // clamp x/y til content bounds
-      const maxX = contentWidth - w;
-      const maxY = contentHeight - h;
-
-      newX = Math.max(0, Math.min(newX, maxX));
-      newY = Math.max(0, Math.min(newY, maxY));
-
-      return [newX, newY, w, h];
-    });
+    zoomAt(x, y, scale);
   };
 
   function startStroke() {
@@ -358,6 +372,21 @@ const BeadCanvas: React.FC<{
       x: transformed.x,
       y: transformed.y,
     };
+  }
+
+  function clientToSvgWithViewBox(
+    clientX: number,
+    clientY: number,
+    viewBox: [number, number, number, number],
+  ) {
+    const rect = svgRef.current!.getBoundingClientRect();
+
+    const [vbX, vbY, vbW, vbH] = viewBox;
+
+    const x = vbX + ((clientX - rect.left) / rect.width) * vbW;
+    const y = vbY + ((clientY - rect.top) / rect.height) * vbH;
+
+    return { x, y };
   }
 
   function getCirclesInBox(testBox: TestRect, hitboxes: CircleHitbox[]) {
@@ -459,17 +488,68 @@ const BeadCanvas: React.FC<{
     };
   }
 
+  function clampViewBox(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ): [number, number, number, number] {
+    const clampedW = Math.max(MIN_W, Math.min(w, contentWidth));
+    const clampedH = Math.max(MIN_H, Math.min(h, contentHeight));
+
+    const maxX = contentWidth - clampedW;
+    const maxY = contentHeight - clampedH;
+
+    const clampedX = Math.max(0, Math.min(x, maxX));
+    const clampedY = Math.max(0, Math.min(y, maxY));
+
+    return [clampedX, clampedY, clampedW, clampedH] as const;
+  }
+
   function panBy(dx: number, dy: number) {
     setViewBox(([x, y, w, h]) => {
-      let newX = x - dx;
-      let newY = y - dy;
+      const newX = x - dx;
+      const newY = y - dy;
 
-      const maxX = contentWidth - w;
-      const maxY = contentHeight - h;
-
-      return [Math.max(0, Math.min(newX, maxX)), Math.max(0, Math.min(newY, maxY)), w, h];
+      return clampViewBox(newX, newY, w, h);
     });
   }
+
+  function zoomAt(svgX: number, svgY: number, scale: number) {
+    setViewBox(([x, y, w, h]) => {
+      let targetW = w * scale;
+      let targetH = h * scale;
+
+      // --- Clip til min/max
+      targetW = Math.max(MIN_W, Math.min(targetW, contentWidth));
+      targetH = Math.max(MIN_H, Math.min(targetH, contentHeight));
+
+      // --- Check om vi rammer limit
+      const atMinOrMax =
+        (w <= MIN_W && targetW <= MIN_W) ||
+        (w >= contentWidth && targetW >= contentWidth) ||
+        (h <= MIN_H && targetH <= MIN_H) ||
+        (h >= contentHeight && targetH >= contentHeight);
+
+      if (atMinOrMax) {
+        // STOP: ingen bevægelse overhovedet
+        return [x, y, w, h];
+      }
+
+      const actualScaleX = targetW / w;
+      const actualScaleY = targetH / h;
+
+      const dx = svgX - x;
+      const dy = svgY - y;
+
+      const newX = svgX - dx * actualScaleX;
+      const newY = svgY - dy * actualScaleY;
+
+      return clampViewBox(newX, newY, targetW, targetH);
+    });
+  }
+
+  // ---
 
   function paintCircle(id: number) {
     if (!workingColor) return;
