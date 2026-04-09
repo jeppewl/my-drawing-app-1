@@ -120,6 +120,12 @@ const BeadCanvas: React.FC<{
     viewBoxRef.current = viewBox;
   }, [viewBox]);
 
+  const pinchStart = useRef<{
+    startDist: number;
+    startViewBox: [number, number, number, number];
+    startMid: { x: number; y: number };
+  } | null>(null);
+
   const handlePointerDownCommon = (e: React.PointerEvent) => {
     activePointers.current.set(e.pointerId, e);
     (e.target as Element).closest("svg")?.setPointerCapture(e.pointerId);
@@ -134,12 +140,32 @@ const BeadCanvas: React.FC<{
         const { x, y } = clientToSvg(e.clientX, e.clientY);
         drawPoints.current = [{ x, y }];
         isPainting.current = false;
+
+        // måske nødvendigt til pinch korrekt
+        panStart.current = null;
       }
 
       if (count === 2) {
         if (modeRef.current === "draw") endStroke();
         setModeSafe("pan");
         isPainting.current = false;
+
+        // forsøger pinch
+        // const pointers = [...activePointers.current.values()];
+        const [p1, p2] = [...activePointers.current.values()];
+
+        const midX = (p1.clientX + p2.clientX) / 2;
+        const midY = (p1.clientY + p2.clientY) / 2;
+
+        const dist = distance(p1, p2);
+
+        const midSVG = clientToSvgWithViewBox(midX, midY, viewBoxRef.current);
+
+        pinchStart.current = {
+          startDist: dist,
+          startViewBox: viewBoxRef.current,
+          startMid: midSVG,
+        };
       }
     }
 
@@ -284,30 +310,59 @@ const BeadCanvas: React.FC<{
       }
     }
 
-    if (mode === "pan" && panStart.current) {
+    if (mode === "pan") {
       const pointers = [...activePointers.current.values()];
 
-      const midX = pointers.reduce((sum, p) => sum + p.clientX, 0) / pointers.length;
-      const midY = pointers.reduce((sum, p) => sum + p.clientY, 0) / pointers.length;
+      if (pointers.length === 1 && panStart.current) {
+        // ✅ desktop eller enkeltfinger pan
+        const p = pointers[0];
+        const currentSvg = clientToSvgWithViewBox(
+          p.clientX,
+          p.clientY,
+          panStart.current.startViewBox,
+        );
+        const dx = currentSvg.x - panStart.current.startSvg.x;
+        const dy = currentSvg.y - panStart.current.startSvg.y;
 
-      const currentSvg = clientToSvgWithViewBox(
-        midX,
-        midY,
-        panStart.current.startViewBox, // 🔥 vigtig
-      );
+        const [startX, startY, w, h] = panStart.current.startViewBox;
+        setViewBox(clampViewBox(startX - dx, startY - dy, w, h));
+      } else if (pointers.length >= 2 && pinchStart.current) {
+        const midX = (pointers[0].clientX + pointers[1].clientX) / 2;
+        const midY = (pointers[0].clientY + pointers[1].clientY) / 2;
 
-      const dx = currentSvg.x - panStart.current.startSvg.x;
-      const dy = currentSvg.y - panStart.current.startSvg.y;
+        const dist = distance(pointers[0], pointers[1]);
+        const scaleFactor = pinchStart.current.startDist / dist;
 
-      const [startX, startY, w, h] = panStart.current.startViewBox;
+        const [startX, startY, startW, startH] = pinchStart.current.startViewBox;
 
-      setViewBox(clampViewBox(startX - dx, startY - dy, w, h));
+        // 🔹 ALT i start-space
+        const midSVG = clientToSvgWithViewBox(midX, midY, pinchStart.current.startViewBox);
+
+        const dx = midSVG.x - pinchStart.current.startMid.x;
+        const dy = midSVG.y - pinchStart.current.startMid.y;
+
+        // 🔹 zoom
+        const newW = startW * scaleFactor;
+        const newH = startH * scaleFactor;
+
+        // 🔹 pan + zoom kombineret korrekt
+        const newX = startX + (pinchStart.current.startMid.x - startX) * (1 - scaleFactor) - dx;
+
+        const newY = startY + (pinchStart.current.startMid.y - startY) * (1 - scaleFactor) - dy;
+
+        setViewBox(clampViewBox(newX, newY, newW, newH));
+      }
     }
   };
 
   const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
     activePointers.current.delete(e.pointerId);
     updateDebugPointers();
+
+    if (activePointers.current.size < 2) {
+      pinchStart.current = null;
+    }
+    if (activePointers.current.size === 0) panStart.current = null;
 
     // 🆕 TAP fallback (meget vigtig)
     if (modeRef.current === "draw") {
@@ -372,6 +427,12 @@ const BeadCanvas: React.FC<{
       x: transformed.x,
       y: transformed.y,
     };
+  }
+
+  function distance(p1: PointerEvent, p2: PointerEvent) {
+    const dx = p1.clientX - p2.clientX;
+    const dy = p1.clientY - p2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
   function clientToSvgWithViewBox(
