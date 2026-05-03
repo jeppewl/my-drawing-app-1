@@ -9,8 +9,8 @@ import paletteData from "./data/palette-hama-IMG_3973.json";
 import { Mode } from "./types/mode";
 
 const BeadApp = () => {
-  const rowLength = 18;
-  const rows = 16;
+  const rowLength = 21;
+  const rows = 14;
   const dotCount = rowLength * rows;
 
   const beadColors: ColorData[] = paletteData.colors;

@@ -33,29 +33,9 @@ const BeadCanvas: React.FC<{
   modeRef,
   setModeSafe,
 }) => {
-  const [debugPointers, setDebugPointers] = useState<DebugPointer[]>([]);
-  const activePointers = useRef(new Map());
-  const updateDebugPointers = () => {
-    const arr = Array.from(activePointers.current.values()).map((p) => ({
-      x: p.clientX,
-      y: p.clientY,
-      id: p.pointerId,
-    }));
-    setDebugPointers(arr);
-  };
-
-  const lastPanPos = useRef<{ x: number; y: number } | null>(null);
-  const touchedCircle = useRef<number | null>(null);
-  const startPos = useRef<{ x: number; y: number } | null>(null);
-
-  const beadIds = useMemo(() => {
-    console.log("useMemo for beadIds");
-    return Array.from({ length: dotCount }, (_, i) => i);
-  }, [dotCount]);
-
-  const rad = 28.048;
-  const startY = 50;
+  const rad = 40.0;
   const startX = 50;
+  const startY = 50;
 
   const contentWidth = rowLength * 2 * rad + 100;
   const contentHeight = rows * 2 * sin60(rad) + 100;
@@ -63,16 +43,13 @@ const BeadCanvas: React.FC<{
   const MIN_W = 100;
   const MIN_H = 100;
 
-  const currentStroke = useRef<PaintChange[]>([]);
-  const visitedInStroke = useRef<Set<number>>(new Set());
+  const DRAW_THRESHOLD = 5; // px
 
-  const [pickedId, setPickedId] = useState<number | null>(null);
-
-  const [viewBox, setViewBox] = useState<[number, number, number, number]>([0, 0, 800, 500]);
-
-  const isPainting = useRef(false);
-
-  const rowAndPos = useRef<{ row: number; pos: number } | null>(null);
+  // useMemo
+  const beadIds = useMemo(() => {
+    console.log("useMemo for beadIds");
+    return Array.from({ length: dotCount }, (_, i) => i);
+  }, [dotCount]);
 
   const circleHitboxes = useMemo(() => {
     console.log("useMemo på circleHitboxes");
@@ -92,46 +69,67 @@ const BeadCanvas: React.FC<{
     });
   }, [beadIds, rad, startX, startY, rowLength]);
 
-  const latestMoveStepRef = useRef<MoveStep | null>(null);
-  const step = latestMoveStepRef.current; // ikke forveksle med lokal step i move-handling
+  // UI/state
+  const [viewBox, setViewBox] = useState<[number, number, number, number]>([0, 0, 800, 500]);
+  const [pickedId, setPickedId] = useState<number | null>(null);
+  const [debugPointers, setDebugPointers] = useState<DebugPointer[]>([]);
 
-  const myTestBox = step ? rectFromSegment(step) : null;
-  const candidates = step ? getCirclesInBox(rectFromSegment(step), circleHitboxes) : [];
-
-  const drawPoints = useRef<DrawPoint[]>([]); // opsamle drawpoints til udvikling
-
-  // kan forbinde
-  const pathData = drawPoints.current
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
-    .join(" ");
-
-  // der skal laves en ref til koord-korrektion
-  const svgRef = useRef<SVGSVGElement | null>(null);
-
-  // til korrekt panning
+  // Gesture refs
+  const activePointers = useRef(new Map());
+  const pinchStart = useRef<{
+    // til korrekt panning
+    startDist: number;
+    startViewBox: [number, number, number, number];
+    startMid: { x: number; y: number };
+  } | null>(null);
   const panStart = useRef<{
     startSvg: { x: number; y: number };
     startViewBox: [number, number, number, number];
   } | null>(null);
-  // og
+
+  // Drawing refs
+  const currentStroke = useRef<PaintChange[]>([]);
+  const visitedInStroke = useRef<Set<number>>(new Set());
+  const drawPoints = useRef<DrawPoint[]>([]); // opsamle drawpoints til udvikling
+  const isPainting = useRef(false);
+
+  // Interaction refs
+  const touchedCircle = useRef<number | null>(null);
+  const startPos = useRef<{ x: number; y: number } | null>(null);
+  const rowAndPos = useRef<{ row: number; pos: number } | null>(null);
+
+  // der skal laves en ref til koord-korrektion
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  // Derived runtime refs
+  const latestMoveStepRef = useRef<MoveStep | null>(null);
   const viewBoxRef = useRef<[number, number, number, number]>(viewBox);
 
   useEffect(() => {
     viewBoxRef.current = viewBox;
   }, [viewBox]);
 
-  const pinchStart = useRef<{
-    startDist: number;
-    startViewBox: [number, number, number, number];
-    startMid: { x: number; y: number };
-  } | null>(null);
+  // Computed values
+  const step = latestMoveStepRef.current; // ikke forveksle med lokal step i move-handling
+  const myTestBox = step ? rectFromSegment(step) : null;
+  const candidates = step ? getCirclesInBox(rectFromSegment(step), circleHitboxes) : [];
+  const pathData = drawPoints.current
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+    .join(" ");
+
+  const updateDebugPointers = () => {
+    const arr = Array.from(activePointers.current.values()).map((p) => ({
+      x: p.clientX,
+      y: p.clientY,
+      id: p.pointerId,
+    }));
+    setDebugPointers(arr);
+  };
 
   const handlePointerDownCommon = (e: React.PointerEvent) => {
     activePointers.current.set(e.pointerId, e);
     (e.target as Element).closest("svg")?.setPointerCapture(e.pointerId);
-
     startPos.current = { x: e.clientX, y: e.clientY };
-
     const count = activePointers.current.size;
 
     if (e.pointerType === "touch") {
@@ -150,8 +148,6 @@ const BeadCanvas: React.FC<{
         setModeSafe("pan");
         isPainting.current = false;
 
-        // forsøger pinch
-        // const pointers = [...activePointers.current.values()];
         const [p1, p2] = [...activePointers.current.values()];
 
         const midX = (p1.clientX + p2.clientX) / 2;
@@ -183,13 +179,10 @@ const BeadCanvas: React.FC<{
         setModeSafe("pan");
         isPainting.current = false;
 
-        const pointers = [...activePointers.current.values()];
-
-        const midX = pointers.reduce((sum, p) => sum + p.clientX, 0) / pointers.length;
-        const midY = pointers.reduce((sum, p) => sum + p.clientY, 0) / pointers.length;
+        const { x, y } = clientToSvg(e.clientX, e.clientY);
 
         panStart.current = {
-          startSvg: clientToSvg(midX, midY),
+          startSvg: { x, y },
           startViewBox: viewBoxRef.current,
         };
       }
@@ -219,32 +212,23 @@ const BeadCanvas: React.FC<{
     activePointers.current.set(e.pointerId, e);
     updateDebugPointers();
 
-    // 🆕 brug mode
-    const mode = modeRef.current;
-
-    // 🖱️ DESKTOP FIX
-    if (e.pointerType === "mouse") {
-      if (e.buttons === 1) {
-        // venstreklik holdt nede
-        if (modeRef.current !== "draw") {
-          modeRef.current = "draw";
-          startStroke();
-        }
-      } else if (e.buttons === 2) {
-        // højreklik holdt nede
-        setModeSafe("pan");
-      } else {
-        // ingen knapper → idle
-        if (modeRef.current === "draw") {
-          endStroke();
-        }
-        modeRef.current = "idle";
-      }
-    }
+    // Snapshot generelt en god ide
+    const currentMode = modeRef.current;
 
     // ✏️ DRAW
-    if (mode === "draw") {
+    if (currentMode === "draw") {
       const p = [...activePointers.current.values()][0];
+
+      if (!startPos.current) return; // 👈 tilføj denne
+
+      // 👇 INDSÆT THRESHOLD CHECK HER
+      const dx = p.clientX - startPos.current.x;
+      const dy = p.clientY - startPos.current.y;
+      const distSq = dx * dx + dy * dy;
+
+      if (!isPainting.current && distSq < DRAW_THRESHOLD * DRAW_THRESHOLD) {
+        return;
+      }
 
       const { x, y } = clientToSvg(p.clientX, p.clientY);
 
@@ -280,23 +264,17 @@ const BeadCanvas: React.FC<{
           }
         });
 
-        if (hits.length === 0) return; // nu skal vi muligvis picke
+        if (hits.length === 0) return;
 
-        // 👇 MODE SWITCH
-        if (modeRef.current === "pick") {
-          return; // 👈 gør ingenting i move
+        if (!isPainting.current) {
+          startStroke();
+          isPainting.current = true;
         }
 
-        if (modeRef.current === "draw") {
-          if (!isPainting.current) {
-            startStroke();
-            isPainting.current = true;
-          }
-
-          hits.forEach(paintCircle);
-        }
+        hits.forEach(paintCircle);
       }
 
+      //TODO undersøge hvorvidt dette er nødvendigt
       const el = document.elementFromPoint(p.clientX, p.clientY);
 
       if (el?.tagName === "circle") {
@@ -310,7 +288,7 @@ const BeadCanvas: React.FC<{
       }
     }
 
-    if (mode === "pan") {
+    if (currentMode === "pan") {
       const pointers = [...activePointers.current.values()];
 
       if (pointers.length === 1 && panStart.current) {
@@ -331,15 +309,15 @@ const BeadCanvas: React.FC<{
         const midY = (pointers[0].clientY + pointers[1].clientY) / 2;
 
         const dist = distance(pointers[0], pointers[1]);
+        if (dist === 0) return;
         const scaleFactor = pinchStart.current.startDist / dist;
-
-        const [startX, startY, startW, startH] = pinchStart.current.startViewBox;
 
         // 🔹 ALT i start-space
         const midSVG = clientToSvgWithViewBox(midX, midY, pinchStart.current.startViewBox);
-
         const dx = midSVG.x - pinchStart.current.startMid.x;
         const dy = midSVG.y - pinchStart.current.startMid.y;
+
+        const [startX, startY, startW, startH] = pinchStart.current.startViewBox;
 
         // 🔹 zoom
         const newW = startW * scaleFactor;
@@ -379,18 +357,12 @@ const BeadCanvas: React.FC<{
     isPainting.current = false;
     touchedCircle.current = null;
 
-    if (modeRef.current === "pan") {
-      lastPanPos.current = null;
-    }
     setModeSafe("idle"); // 👈 opdater både ref + state
     startPos.current = null;
   };
 
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault();
-
-    //debug
-    // console.log(e.deltaX, e.deltaY);
 
     const zoomFactor = 1.05;
     const scale = e.deltaY < 0 ? 1 / zoomFactor : zoomFactor;
@@ -702,6 +674,18 @@ const BeadCanvas: React.FC<{
           <circle key={i} cx={p.x} cy={p.y} r={2} fill="red" pointerEvents="none" />
         ))}
         <path d={pathData} fill="none" stroke="#ff55e384" strokeWidth={2} pointerEvents="none" />
+        <circle cx={startX} cy={startY} r={100} fill="#32cfff60" />
+
+        <rect
+          x={startX}
+          y={startY}
+          width={contentWidth}
+          height={contentHeight}
+          fill="none"
+          stroke="black"
+          strokeDasharray="4,2"
+          pointerEvents="none"
+        />
       </svg>
       <div className="debug-layer">
         {debugPointers.map((p) => (
@@ -729,6 +713,21 @@ const BeadCanvas: React.FC<{
         }}
       >
         Hej {rowAndPos.current?.row} {rowAndPos.current?.pos}
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          top: 10,
+          left: 50,
+          background: "rgba(0, 0, 0, 0.363)",
+          color: "#fff",
+          padding: "4px 8px",
+          borderRadius: 4,
+          fontSize: 12,
+          pointerEvents: "none",
+        }}
+      >
+        ContentWidth/Height {contentWidth.toFixed(2)} {contentHeight.toFixed(2)}
       </div>
     </div>
   );
